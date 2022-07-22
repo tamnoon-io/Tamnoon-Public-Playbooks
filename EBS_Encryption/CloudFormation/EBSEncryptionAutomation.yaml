@@ -12,11 +12,29 @@ Conditions:
   IsKMSProvided: !Not [!Equals [ { "Ref": "KMSArn"}, ""]]
 
 Resources:
+  KMSCreationHandle:
+    Condition: IsKMSNotProvided
+    DependsOn:
+      - EBSEncryptionKey
+      - EBSEncryptionKeyAlias
+    Type: "AWS::CloudFormation::WaitConditionHandle"
+
+  WaitHandle:
+    Condition: IsKMSProvided
+    Type: "AWS::CloudFormation::WaitConditionHandle"
+
+  WaitCondition:
+    Type: "AWS::CloudFormation::WaitCondition"
+    Properties:
+      Handle: !If [ IsKMSNotProvided, !Ref KMSCreationHandle, !Ref WaitHandle ]
+      Timeout: "1"
+      Count: 0
+
   EncryptionRemediationPolicy:
     Condition: IsKMSNotProvided
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: EncryptEBSAutomationRole-policy
+      ManagedPolicyName: !Sub 'EncryptEBSAutomationRole-policy-${AWS::Region}'
       Roles:
         - !Ref EncryptionRemediationRole
       PolicyDocument:
@@ -79,11 +97,14 @@ Resources:
               - iam:GetRole*
               - iam:DeleteRolePolicy
             Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/DetachEBSVolumeStack*LambdaRole*'
+    DependsOn:
+      - EncryptionRemediationRole
+
   EncryptionRemediationPolicyV2:
     Condition: IsKMSProvided
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: EncryptEBSAutomationRole-policy
+      ManagedPolicyName: !Sub 'EncryptEBSAutomationRole-policy-${AWS::Region}'
       Roles:
         - !Ref EncryptionRemediationRole
       PolicyDocument:
@@ -146,9 +167,13 @@ Resources:
               - iam:GetRole*
               - iam:DeleteRolePolicy
             Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/DetachEBSVolumeStack*LambdaRole*'
+    DependsOn:
+      - EncryptionRemediationRole
+
   EncryptionRemediationRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub 'EncryptionRemediationRole-${AWS::Region}'
       AssumeRolePolicyDocument:
         Statement:
           - Action: sts:AssumeRole
@@ -158,6 +183,7 @@ Resources:
                 - ssm.amazonaws.com
                 - ec2.amazonaws.com
         Version: "2012-10-17"
+
   EBSEncryptionKey:
     Condition: IsKMSNotProvided
     Type: AWS::KMS::Key
@@ -196,7 +222,8 @@ Resources:
           - Sid: Allow use of the key
             Effect: Allow
             Principal:
-              AWS: !GetAtt EncryptionRemediationRole.Arn
+              AWS:
+                !GetAtt EncryptionRemediationRole.Arn
             Action:
               - kms:DescribeKey
               - kms:Encrypt
@@ -205,34 +232,13 @@ Resources:
               - kms:GenerateDataKey
               - kms:GenerateDataKeyWithoutPlaintext
             Resource: '*'
+
   EBSEncryptionKeyAlias:
     Condition: IsKMSNotProvided
     Type: AWS::KMS::Alias
     Properties:
       AliasName: alias/EC2EncryptionAtRestKeyAlias
       TargetKeyId: !Ref EBSEncryptionKey
-
-  KMSCreationHandle:
-    Condition: IsKMSNotProvided
-    DependsOn:
-      - EncryptionRemediationRole
-      - EncryptionRemediationPolicy
-      - EBSEncryptionKey
-      - EBSEncryptionKeyAlias
-
-    Type: "AWS::CloudFormation::WaitConditionHandle"
-  WaitHandle:
-    Condition: IsKMSProvided
-    Type: "AWS::CloudFormation::WaitConditionHandle"
-    DependsOn:
-      - EncryptionRemediationRole
-      - EncryptionRemediationPolicyV2
-  WaitCondition:
-    Type: "AWS::CloudFormation::WaitCondition"
-    Properties:
-      Handle: !If [ IsKMSNotProvided, !Ref KMSCreationHandle, !Ref WaitHandle ]
-      Timeout: "1"
-      Count: 0
 
   EncryptedVolumesConfigRule:
     Type: AWS::Config::ConfigRule
@@ -265,7 +271,7 @@ Resources:
             type: String
             description: (Optional) The ARN of the role that allows Automation to perform the actions on your behalf.
             default:
-              !GetAtt EncryptionRemediationRole.Arn
+             !GetAtt EncryptionRemediationRole.Arn
         mainSteps:
           - name: describeVolume
             action: aws:executeAwsApi
@@ -298,7 +304,7 @@ Resources:
             action: aws:executeAwsApi
             timeoutSeconds: 30
             onFailure: Abort
-            nextStep: createSnapshot
+            nextStep: stopInstance
             maxAttempts: 1
             inputs:
               Service: ec2
@@ -312,6 +318,16 @@ Resources:
               - Name: instanceState
                 Selector: $.Reservations[0].Instances[0].State.Name
                 Type: String
+          - name: stopInstance
+            action: aws:executeAutomation
+            timeoutSeconds: 300
+            onFailure: Abort
+            nextStep: createSnapshot
+            maxAttempts: 1
+            inputs:
+              DocumentName: AWS-StopEC2Instance
+              RuntimeParameters:
+                InstanceId: "{{describeVolume.instanceId}}"
           - name: createSnapshot
             action: aws:executeAutomation
             timeoutSeconds: 1800
@@ -336,16 +352,6 @@ Resources:
               - Name: SnapshotId
                 Selector: $.Snapshots[0].SnapshotId
                 Type: String
-          - name: deleteNewEncryptedVolume
-            action: aws:executeAwsApi
-            timeoutSeconds: 300
-            onFailure: Continue
-            nextStep: deleteRootVolumeSnapshot
-            maxAttempts: 1
-            inputs:
-              Service: ec2
-              Api: DeleteVolume
-              VolumeId: "{{createEncryptedVolumeFromEncryptedSnapshot.NewRootVolumeID}}"
           - name: copyAndEncryptSnapshot
             action: aws:executeAwsApi
             timeoutSeconds: 3600
@@ -381,7 +387,7 @@ Resources:
             action: aws:executeAwsApi
             timeoutSeconds: 30
             onFailure: Abort
-            nextStep: stopInstance
+            nextStep: detachEBSVolume
             maxAttempts: 1
             inputs:
               Service: ec2
@@ -402,16 +408,6 @@ Resources:
               - Name: NewRootVolumeID
                 Selector: $.VolumeId
                 Type: String
-          - name: stopInstance
-            action: aws:executeAutomation
-            timeoutSeconds: 300
-            onFailure: step:deleteNewEncryptedVolume
-            nextStep: detachEBSVolume
-            maxAttempts: 1
-            inputs:
-              DocumentName: AWS-StopEC2Instance
-              RuntimeParameters:
-                InstanceId: "{{describeVolume.instanceId}}"
           - name: detachEBSVolume
             action: aws:executeAutomation
             timeoutSeconds: 300
@@ -473,7 +469,7 @@ Resources:
           - name: detachNewVolume
             action: aws:executeAutomation
             timeoutSeconds: 300
-            onFailure: Continue
+            onFailure: Abort
             nextStep: attachOriginalVolume
             maxAttempts: 1
             inputs:
@@ -518,6 +514,7 @@ Resources:
       DocumentType: Automation
     DependsOn:
       - WaitCondition
+
   EncryptEBSVolumesConfigRemediation:
     Type: AWS::Config::RemediationConfiguration
     Properties:
