@@ -41,7 +41,7 @@ Config enabled in the target accounts ensuring there are no Config rules in your
     * look for the Role with name "EncryptionRemediationRole-" for that specific region and add it to the key users 
 
 
-##Automation Stack 
+## Automation Stack 
 ### Limitations
 1. Not working straightforwardly with EKS - please refer to - EKS Workaround later on this doc.
 2. Although there is no direct way to encrypt an existing unencrypted volume or snapshot, you can encrypt them by creating either a volume or a snapshot. This pattern provides automation to remediate your unencrypted EBS volumes.
