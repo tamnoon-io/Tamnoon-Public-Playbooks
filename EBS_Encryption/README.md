@@ -27,7 +27,8 @@ Playbook steps:
 A workstation with both AWS CLI and jq installed (https://stedolan.github.io/jq/download/).
 IAM permissions are provisioned to have read and write access to CloudFormation, EC2, Systems Manager, Config, & KMS.
 AWS Organizations configured with all features enabled, a requirement for Service Control Policies.
-Config enabled in the target accounts ensuring there are no Config rules in your AWS accounts with the name "encrypted-volumes." This solution deploys an AWS Config rule with this name. Existing Config rules with this name may fail the deployment. This can also result in unnecessary charges related to processing the same AWS Config rule more than once.
+AWS Config enabled in the target accounts ensuring there are no Config rules in your AWS accounts with the name "encrypted-volumes." This solution deploys an AWS Config rule with this name. Existing Config rules with this name may fail the deployment. This can also result in unnecessary charges related to processing the same AWS Config rule more than once.
+AWS Systems Manager must be enabled to view the status of the remediation automation
 
 ## Notes:
 * If the instance is public facing without a static public IP assigned, The instance will get a new public IP after creation. In that case, you need to sync all the assets/users that rely on that with the new IP.
@@ -41,7 +42,7 @@ Config enabled in the target accounts ensuring there are no Config rules in your
     * look for the Role with name "EncryptionRemediationRole-" for that specific region and add it to the key users 
 
 
-## Automation Stack 
+##Automation Stack 
 ### Limitations
 1. Not working straightforwardly with EKS - please refer to - EKS Workaround later on this doc.
 2. Although there is no direct way to encrypt an existing unencrypted volume or snapshot, you can encrypt them by creating either a volume or a snapshot. This pattern provides automation to remediate your unencrypted EBS volumes.

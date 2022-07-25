@@ -1,10 +1,10 @@
 Description: Tamnoon - This CFT template create a config remediation rule to handle non encrypted EBS volumes using a specific Key or givin Key.
 Parameters:
-  KeyAdminParameter:
-    Description: (Optional) - In case taht KEY Arn was not provided ARN of Key Admin IAM User or Role to generate the KMS Key
+  KeyAdminIAMUserArn:
+    Description: (Optional) - This is the arn of the admin IAM User or Role to generate a new KMS key for the encryption in case the KMS arn value was not provided
     Type: String
   KMSArn:
-    Description: (Optional) - The Arn of a given KMS to use. If not provided the cft will create one to use
+    Description: (Optional) - The arn of a given KMS to use. If not provided, the CFT will create one to use if provided no need to populate the other parameter
     Type: String
 
 Conditions:
@@ -204,7 +204,7 @@ Resources:
           - Sid: Allow administration of the key
             Effect: Allow
             Principal:
-              AWS: !Ref KeyAdminParameter
+              AWS: !Ref KeyAdminIAMUserArn
             Action:
               - kms:Create*
               - kms:Describe*
