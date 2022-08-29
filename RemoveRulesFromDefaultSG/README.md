@@ -1,31 +1,31 @@
 
 <img src="../images/icons/Tamnoon.png" width="200"/>
 
-# Tamnoon Automatically Remove inbound and outbound rules from unused default security groups.
+# Tamnoon Playbook: automatically remove inbound and outbound rules from unused default security groups.
 
 ## Description
-This playbook describes how to remediate unused default security groups 
-The execution script also saves the current state per security group in case that rollback is needed
-The execution is based on AWS creds configuration based on the next fallbacks:
-1. If AWS profile were given, use it as an AWS creds source
-2. If no profile, use en variable creds for aws 
-3. If not env variables provided, use the current ./~aws configuration
-The full path to a JSON file that will contain the current revoked sg states in a case we want to rollback
+This playbook describes how to remove inbound and outbound network rules from unused default security groups within an AWS account. 
+The execution script saves the current state per security group in case that rollback is needed.
+The execution is based on AWS credentials configuration based on the next fallbacks:
+1. If AWS profile were given, use it as an AWS credentials source.
+2. If no profile, use as variable credentials for aws.
+3. If not environmental variables provided, use the current ./~aws configuration
+The full path to a JSON file that will contain the current revoked security group states in a case the rollback is needed
 
-After authenticated via AWS API, the script execution will be run on the same AWS account that those creds defined in 
+After authentication via AWS API, the script execution will run on the same AWS account of those credentials defined in fallbacks 1-3 (see above)
 
 ## Playbook steps:
 1. Iterate over all regions within the AWS account 
 2. Check for the defaults Security group within the region 
-3. If there are default sg:
-   1. Check that they are not attached to any NIC within the region 
-   2. If the sg is attached print the warring message and move to the next one 
-   3. If the sg is not attached;
-      1. Delete all ingress and egress rule definition 
-      2. Kep those IpPermissions of the deleted rules within the state for rollback purposes
+3. For all the default security groups:
+   1. Check it's not attached to any NIC within the region 
+   2. If the security group is attached, print the warring message and move to the next one 
+   3. If the security group is not attached;
+      1. Delete all ingress and egress rules definitions
+      2. Keep those IpPermissions of the deleted rules within the state, for rollback purposes
       
 ## Prerequisites 
-1. Aws creds defined on the execution machine with permission to change SecurityGroups
+1. AWS cretentials defined on the execution machine with permission to change SecurityGroups
 2. Permissions to save JSON state file to the filesystem 
 3. Python v3.6  and above + boto3 package installed ( pip install boto3)
 
