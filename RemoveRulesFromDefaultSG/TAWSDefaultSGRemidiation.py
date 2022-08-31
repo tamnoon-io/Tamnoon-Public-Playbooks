@@ -49,7 +49,7 @@ def print_help():
         '\t\t\t'
         '\n'
         '\t\t\t\t The script is based on AWS Boto3 API \n'
-        '\t\t\t\t https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2.html#EC2.SecurityGroup.revoke_ingress'
+        '\t\t\t\t https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2.html#EC2.SecurityGroup.revoke_ingress\n'
         '\t\t\t\t https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2.html#EC2.SecurityGroup.revoke_egress\n'
         '\n\n'
         '\t\t\t Executions Examples:\n'
