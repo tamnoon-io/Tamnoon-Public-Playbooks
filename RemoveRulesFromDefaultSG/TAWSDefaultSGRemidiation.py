@@ -3,7 +3,8 @@ import json
 import logging
 import boto3
 import botocore
-from  botocore import exceptions
+from botocore import exceptions
+
 boto3.set_stream_logger('boto3', logging.ERROR)
 
 import sys
@@ -86,17 +87,16 @@ def _remove_defaut_sg_rules(sg, ec2_resource, is_dry_run):
     else:
         security_group.revoke_ingress(IpPermissions=sg['IpPermissions'], DryRun=is_dry_run)
 
-
     if len(sg['IpPermissionsEgress']) == 0:
         logging.info(f"No egress rules to remove for sg- {sg['GroupName']}-{sg['GroupId']}")
     else:
         security_group.revoke_egress(IpPermissions=sg['IpPermissionsEgress'], DryRun=is_dry_run)
 
 
-
 def _auth_ingress(permissions, sg_id, region_ec2_resource):
     security_group = region_ec2_resource.SecurityGroup(sg_id)
     security_group.authorize_ingress(IpPermissions=permissions)
+
 
 def _auth_egress(permissions, sg_id, region_ec2_resource):
     security_group = region_ec2_resource.SecurityGroup(sg_id)
@@ -108,10 +108,14 @@ def _execute_rollback(region_session, region, sg_definition, sg_id=None):
     if not sg_id:
         for sg_id, permissions in sg_definition.items():
             logging.info(f"Going to rollback sg - {sg_id} in region - {region}")
-            if 'Ingress' in permissions:
+            if 'Ingress' in permissions and len(permissions['Ingress']) > 0:
                 _auth_ingress(permissions['Ingress'], sg_id, region_ec2_resource)
-            if 'Egress' in permissions:
+            else:
+                logging.info(f"No Ingress rules for sg -{sg_id} at region - {region}")
+            if 'Egress' in permissions and len(permissions['Egress']) > 0:
                 _auth_egress(permissions['Egress'], sg_id, region_ec2_resource)
+            else:
+                logging.info(f"No Egress rules for sg -{sg_id} at region - {region}")
     else:
         logging.info(f"Going to rollback sg - {sg_id} in region - {region}")
         permissions = sg_definition[sg_id]
@@ -119,7 +123,6 @@ def _execute_rollback(region_session, region, sg_definition, sg_id=None):
             _auth_ingress(permissions['Ingress'], sg_id, region_ec2_resource)
         if 'Egress' in permissions:
             _auth_egress(permissions['Egress'], sg_id, region_ec2_resource)
-
 
 
 if __name__ == '__main__':
@@ -154,17 +157,18 @@ if __name__ == '__main__':
     state_dict = dict()
 
     if not is_rollback:
-        with open(state_path, "w") as state_path_json:
-            try:
-                session = boto3.Session(profile_name=aws_profile)
-                client = session.client('ec2')
-                regions = client.describe_regions()
-            except botocore.exceptions.NoRegionError:
-                session = boto3.Session(profile_name=aws_profile,
-                                        region_name='us-east-1')
-                client = session.client('ec2')
-                regions = client.describe_regions()
 
+        try:
+            session = boto3.Session(profile_name=aws_profile)
+            client = session.client('ec2')
+            regions = client.describe_regions()
+        except botocore.exceptions.NoRegionError:
+            session = boto3.Session(profile_name=aws_profile,
+                                    region_name='us-east-1')
+            client = session.client('ec2')
+            regions = client.describe_regions()
+
+        try:
             # For each region in aws it will create specific ec2 client and ec2 resource
             for region in regions['Regions']:
 
@@ -196,9 +200,11 @@ if __name__ == '__main__':
                             break
 
                     if is_attached:
-                        logging.warning(f"security group name - {sg['GroupName']}, id - {sg['GroupId']} is attahced to some nics in region - {region['RegionName']}")
+                        logging.warning(
+                            f"security group name - {sg['GroupName']}, id - {sg['GroupId']} is attahced to some nics in region - {region['RegionName']} going to skip it")
                     else:
-                        logging.info(f"Going to remove rulse for sg - {sg['GroupId']} in region - {region['RegionName']}")
+                        logging.info(
+                            f"Going to remove rules for sg - {sg['GroupId']} in region - {region['RegionName']}")
 
                         # Save the current sg in the sg state for rollback purpose
                         if region['RegionName'] not in state_dict:
@@ -208,14 +214,19 @@ if __name__ == '__main__':
                         state_dict[region['RegionName']][sg_id]['Egress'] = sg_ip_permissions_egress
 
                         _remove_defaut_sg_rules(sg, region_ec2_resource, is_dry_run)
+        except Exception as e:
+            logging.info(f"Persist the state")
+            with open(state_path, "w") as state_path_json:
+                json.dump(state_dict, state_path_json)
 
+        logging.info(f"Persist the state")
+        with open(state_path, "w") as state_path_json:
             json.dump(state_dict, state_path_json)
     else:
         with open(state_path, "r") as state_path_json:
             state = json.load(state_path_json)
             if sg_to_rb == 'All':
                 for region, sg_definition in state.items():
-
                     region_session = boto3.Session(profile_name=aws_profile, region_name=region)
                     _execute_rollback(region_session, region, sg_definition)
             else:
@@ -223,9 +234,3 @@ if __name__ == '__main__':
                     if sg_to_rb in sg_definition:
                         region_session = boto3.Session(profile_name=aws_profile, region_name=region)
                         _execute_rollback(region_session, region, sg_definition, sg_to_rb)
-
-
-
-
-
-
