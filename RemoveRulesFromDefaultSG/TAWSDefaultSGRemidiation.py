@@ -17,7 +17,11 @@ def log_setup(log_l):
     """
     logging.basicConfig(format='[%(asctime)s -%(levelname)s] (%(processName)-10s) %(message)s')
     log_level = log_l
+    logging.getLogger('boto').setLevel(logging.CRITICAL)
+    logging.getLogger('botocore').setLevel(logging.CRITICAL)
+    logging.getLogger('boto3').setLevel(logging.CRITICAL)
     logging.getLogger().setLevel(log_level)
+
 
 
 def print_help():
@@ -55,6 +59,7 @@ def print_help():
         '\n\n'
         '\t\t\t Executions Examples:\n'
         '\t\t\t\t python3 TAWSDefaultSGRemidiation.py --profile <aws authz profile> --statePath <path to state json file > \n'
+        '\t\t\t\t python3 TAWSDefaultSGRemidiation.py --profile <aws authz profile> --statePath <path to state json file > --dryRun True\n'
         '\t\t\t\t python3 TAWSDefaultSGRemidiation.py --profile <aws authz profile> --statePath <path to state json file > --rollBack True\n'
         '\t\t\t\t python3 TAWSDefaultSGRemidiation.py --profile <aws authz profile> --statePath <path to state json file > --rollBack True --sgTorollBack <sg id of the sg to rollback>\n'
         '\n\n'
@@ -148,11 +153,12 @@ if __name__ == '__main__':
     is_rollback = args.rollBack
     state_path = args.statePath
     sg_to_rb = args.sgTorollBack
+    is_dry_run = args.dryRun
 
     if is_rollback:
         logging.info(f"Start execute security group roll back for - {sg_to_rb}")
     else:
-        logging.info(f"Start execute security group rule removal")
+        logging.info(f"Start execute security group rules removal")
 
     state_dict = dict()
 
@@ -204,7 +210,8 @@ if __name__ == '__main__':
                             f"security group name - {sg['GroupName']}, id - {sg['GroupId']} is attahced to some nics in region - {region['RegionName']} going to skip it")
                     else:
                         logging.info(
-                            f"Going to remove rules for sg - {sg['GroupId']} in region - {region['RegionName']}")
+                            f"Going to remove the Inbound and Outbound rules from SecurityGroup - {sg['GroupId']} in Region - {region['RegionName']}")
+
 
                         # Save the current sg in the sg state for rollback purpose
                         if region['RegionName'] not in state_dict:
@@ -213,7 +220,10 @@ if __name__ == '__main__':
                         state_dict[region['RegionName']][sg_id]['Ingress'] = sg_ip_permissions
                         state_dict[region['RegionName']][sg_id]['Egress'] = sg_ip_permissions_egress
 
-                        _remove_defaut_sg_rules(sg, region_ec2_resource, is_dry_run)
+                        if not is_dry_run:
+                            _remove_defaut_sg_rules(sg, region_ec2_resource, is_dry_run)
+                        else:
+                            logging.info(f"#########  This is a dry run!!! - no action executed ##########")
         except Exception as e:
             logging.info(f"Persist the state")
             with open(state_path, "w") as state_path_json:
