@@ -330,7 +330,7 @@ Resources:
                 InstanceId: "{{describeVolume.instanceId}}"
           - name: createSnapshot
             action: aws:executeAutomation
-            timeoutSeconds: 1800
+            timeoutSeconds: 18000
             onFailure: Abort
             nextStep: extractSnapshotId
             maxAttempts: 3

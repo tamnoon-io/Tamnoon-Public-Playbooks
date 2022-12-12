@@ -44,7 +44,7 @@ AWS Systems Manager must be enabled to view the status of the remediation automa
 
 ##Automation Stack 
 ### Limitations
-1. Not working straightforwardly with EKS - please refer to - EKS Workaround later on this doc.
+1. In case of asset that managed by Auto Scaling Group (EKS,ECS ...) Please refer to the Auto Scaling Group remediation part of the playbook.
 2. Although there is no direct way to encrypt an existing unencrypted volume or snapshot, you can encrypt them by creating either a volume or a snapshot. This pattern provides automation to remediate your unencrypted EBS volumes.
 3. This solution encrypts all EBS volumes with the same AWS KMS.
 
@@ -61,11 +61,18 @@ AWS Systems Manager must be enabled to view the status of the remediation automa
     * You can view the progress and status in the Systems Manager. In the console, go to "Systems Manager" -> "Automation." Select the 'Execution ID' of the corresponding automation to view further details.
 
 
-### EKS Workaround
-In the case of EKS, using Node Group Manager - this automated remediation is not enough. The next steps suggested as a workaround:
-1. Add the node group's IAM Role to the KMS policy as a user ![Policy Template](CloudFormation/KMS_Policy_Statment_for_EKS.json)
-2. Enable encryption by default for that account and region 
-3. Execute the remediation and wait until the node group creates a new instance with encrypted volume.
+### Auto Scaling Group Remediation Section (Cover ECS/EKS)
+In case of an instance that is managed by Auto Scaling Group (for example, ECS/EKS or stand-alone ASG)
+Follow the next steps:
+1. Enable encryption by default for that account and region - This will prevention for scaling up an unencrypted instance
+2. To remediate the existing running instance, You need to suspend the health check process from the Auto Scaling Group:
+   1. Open the Amazon EC2 console.
+   2. In the navigation pane, under Auto Scaling, choose Auto Scaling Groups.
+   3. Select the group of the instance that you want to remediate.
+   4. Under Advanced configuration, click edit.
+   5. Under Suspended process, choose Health Check and click update 
+3. Execute the remediation against the instance on this Auto Scaling Group and wait until the Instance is back to its initiate state.
+4. Turn back the Health check process under the Auto Scaling Group
 
 ## Enforce Service Control Policies
 
