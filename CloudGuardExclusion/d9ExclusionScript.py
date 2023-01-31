@@ -51,11 +51,13 @@ def print_help():
         '\t\t\t\t python3 d9ExclusionScript.py --d9key <key> --d9secret <secret> --ruleSetId -5 --ruleIds "D9.AWS.IAM.34,D9.AWS.IAM.28" \n'
         '\t\t\t\t python3 d9ExclusionScript.py --d9key <key> --d9secret <secret> --ruleSetId All --ruleIds "D9.AWS.IAM.34,D9.AWS.IAM.28" \n'
         '\t\t\t\t python3 d9ExclusionScript.py --d9key <key> --d9secret <secret> --ruleSetId All --ruleIds "D9.AWS.IAM.34,D9.AWS.IAM.28" --asset a1,a2,a3\n'
+        '\t\t\t\t python3 d9ExclusionScript.py --d9key <key> --d9secret <secret> --ruleSetId "830467" --ruleIds "D9.AWS.IAM.35" --rulesNames "Ensure that S3 Bucket policy doesn\'t allow actions from all principals without a condition,Ensure AWS Redshift clusters are not publicly accessible,Ensure that S3 bucket ACLs don\'t allow \'READ\' access for anonymous / AWS authenticated users" --comments "Excluded by Tamnoon Service since the website needs to be public"'
         '\n\n'
         '\t\t\t Parameter Usage:\n'
         '\t\t\t\t logLevel - The logging level (optional). Default = Info\n'
         '\t\t\t\t ruleSetId - list of the rule sets ids to exclude the rule from - (Could be "All" and then the script will run against all rule sets)\n'
         '\t\t\t\t ruleIds - A comma seperated string for ids to exclude - for example "D9.AWS.NET.AG2.3.Instance.9000,D9.AWS.NET.AG2.3.Instance.22"\n'
+        '\t\t\t\t rulesNames - A comma seperated string for rules names to exclude - for example - "Ensure that S3 Bucket policy doesnt allow actions from all principals without a condition, Ensure that S3 bucket ACLs don\'t allow \'FULL_CONTROL\' access for anonymous / AWS authenticated users"  '
         '\t\t\t\t assetIds - A comma seperated string for asset ids to exclude for example "i-12345,i-67893"\n'
         '\t\t\t\t comments - (optional) The comment to add to the exclusion\n'
         '\t\t\t\t dateRangeFrom  - The start time for the exclusion date range for exaple - "2022-06-19T10:09:37Z"\n'
@@ -68,10 +70,11 @@ def print_help():
 
 exsiting_excluded_rules = None
 
-def extract_rules(rule_ids, rule_Set_id):
+def extract_rules(rule_ids, rule_Set_id, rule_names):
     '''
     Thie function get the ruleSet by its id and get the relevant rules to exclude metadata
     :param rule_ids: The rules to exclude
+    :param rule_names: The rule names to exclude
     :param rule_Set_id: The rule set id to exclude from
     :return:
     '''
@@ -81,17 +84,30 @@ def extract_rules(rule_ids, rule_Set_id):
         'Accept': 'application/json'
     }
 
+    # Get the rule set rules
     r = requests.get(f'https://api.dome9.com/v2/Compliance/Ruleset/{rule_Set_id}', headers=headers, auth=(d9key, d9secret))
     r.raise_for_status()
     extracted_rules = r.json()
     result = []
-    rules_as_a_list = rule_ids.split(',')
+    rules_ids_as_a_list= []
+    rule_names_as_a_list = []
+    if rule_ids:
+        rules_ids_as_a_list = rule_ids.split(',')
+    if rule_names:
+        rule_names_as_a_list = rule_names.split(',')
+
+
+    if not rule_ids and not rule_names:
+        logging.error(f"Execution must include either rule_ids or rule_names!!")
+        raise Exception(f"Execution must include either rule_ids or rule_names")
+
+    rules_as_a_list = rules_ids_as_a_list + rule_names_as_a_list
 
     for rule in rules_as_a_list:
         for extracted_rule in extracted_rules['rules']:
-            if rule == extracted_rule['ruleId']:
+            if rule == extracted_rule['ruleId'] or rule == extracted_rule['name']:
                 result.append({
-                    "id": rule,
+                    "id": extracted_rule['ruleId'],
                     "logicHash": extracted_rule['logicHash'],
                     "name": extracted_rule['name']
         })
@@ -115,43 +131,78 @@ def get_all_rule_sets():
     return results_ids
 
 
+def _delete_exclsuion(exclusion_id):
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+
+    r = requests.delete(f'https://api.dome9.com/v2/Compliance/Exclusion?id={exclusion_id}', headers=headers,
+                     auth=(d9key, d9secret))
+    r.raise_for_status()
+
+
 def need_to_run_exclusion(asset, rule_set, rules):
-    rule_ids = list()
+    rule_names = list()
     for rule in rules:
-        rule_ids.append(rule["id"])
+        if rule['name']:
+            rule_names.append(rule['name'])
 
     # get the exclusion for the same rule_set and asset
-    # sub_set = list()
+    sub_set = list()
     for exclusion in exsiting_excluded_rules:
-        logic_expressions_split = exclusion["logicExpressions"][0].split(" ") if exclusion["logicExpressions"] else None
-        # the tamnoon exclusion always will be for specific asset so the length of the split should be in size 3
-        if logic_expressions_split and len(logic_expressions_split) == 3 or not logic_expressions_split:
-            # If the exclusion is for the same rule set and the same asset or doesn't have asset
-            if exclusion["rulesetId"] == rule_set:
-                if ((asset and asset == logic_expressions_split[2].replace("'","")) or (not asset)):
-                    rule_that_not_exist = False
-                    # todo - impliment replace exclusion logic - delete and create new one
-                    for rule in exclusion["rules"]:
-                        if rule["id"] not in rule_ids:
-                            rule_that_not_exist = True
-                            break
-                    if not rule_that_not_exist:
-                        logging.info(f"No need to run Exclusion for {rule_set} for ids - {rule_ids} and asset - {asset}, The exclusion already exist!")
-                        return False
-    return True
+        if exclusion["rulesetId"] == int(rule_set):
+            if asset:
+                logic_expressions_split = exclusion["logicExpressions"][0].split(" ") if exclusion["logicExpressions"] else None
+                # the tamnoon exclusion always will be for specific asset so the length of the split should be in size 3
+                if (logic_expressions_split and len(logic_expressions_split) == 3):
+                    # If the exclusion is for the same rule set and the same asset or doesn't have asset
+                    if ((asset and asset == logic_expressions_split[2].replace("'","")) ):
+                        sub_set.append(exclusion)
+            else:
+                if not exclusion["logicExpressions"]:
+                    sub_set.append(exclusion)
+    if len(sub_set) == 0:
+        # no potential exclusion found return true
+        return True
+    for exclusion in sub_set:
+
+        curr_rule_ids = list()
+        curr_rule_names = list()
+        for curr_rule in exclusion['rules']:
+            curr_rule_ids.append(curr_rule['id'])
+            curr_rule_names.append((curr_rule['name']))
+
+
+        # if all curr rule names in the potential exclusion request
+        if all(item in rule_names for item in curr_rule_names):
+            if len(rule_names)>len(curr_rule_names):
+                # need to replace the exclusion
+                _delete_exclsuion(exclusion['id'])
+                return True
+            else:
+                logging.info(
+                    f"No need to run Exclusion for {rule_set} for rules - {rule_names} and asset - {asset}, The exclusion already exist!")
+                return False
+        else:
+            logging.info(
+                f"No need to run Exclusion for {rule_set} for rules - {rule_names} and asset - {asset}, The exclusion already exist!")
+            return False
 
 
 
-def run_exclusion(rule_ids, rule_set, asset_ids):
+def run_exclusion(rule_ids, rule_set, asset_ids, rule_names):
     logging.info(f"Going to extract the rules meta data for rule set {rule_set}")
-    rules = extract_rules(rule_ids=rule_ids, rule_Set_id=rule_set)
+    rules = extract_rules(rule_ids=rule_ids, rule_Set_id=rule_set, rule_names=rule_names)
     if len(rules)>0:
         if asset_ids:
             for asset in asset_ids.split(','):
-                logic_expressions = [f"name like '{asset}'"]
-                _run_exclusion(logic_expressions, rule_set, rules)
+                if need_to_run_exclusion(asset, rule_set, rules):
+                    logic_expressions = [f"name like '{asset}'"]
+                    _run_exclusion(logic_expressions, rule_set, rules)
         else:
-            _run_exclusion(None, rule_set, rules)
+            if need_to_run_exclusion(None, rule_set, rules):
+                _run_exclusion(None, rule_set, rules)
     else:
         logging.info(f"No specific rules found for - Bundle {rule_set}")
 
@@ -196,7 +247,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--logLevel', required=False, type=str, default="INFO")
     parser.add_argument('--ruleSetId', required=True, type=str)
-    parser.add_argument('--ruleIds', required=True, type=str,default='All')
+    parser.add_argument('--ruleIds', required=False, type=str,default=None)
+    parser.add_argument('--rulesNames', required=False, type=str, default=None)
     parser.add_argument('--assetIds', required=False, type=str, default=None)
     parser.add_argument('--comments', required=False, type=str,  default="Exclusions by Tamnoon Service")
     parser.add_argument('--dateRangeFrom', required=False, default="2022-06-19T10:09:37Z")
@@ -212,11 +264,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
+
     d9key = args.d9key
     d9secret = args.d9secret
 
     rule_set_id = args.ruleSetId
     rule_ids = args.ruleIds
+    rule_names = args.rulesNames
     asset_ids = args.assetIds
     comments = args.comments
     date_range_from = None
@@ -244,16 +298,17 @@ if __name__ == '__main__':
     if rule_set_id == 'All':
         # get all the rule sets ids in the system
         rule_sets_ids = get_all_rule_sets()
-
         for rule_set in rule_sets_ids:
-            run_exclusion(rule_ids=rule_ids, rule_set=rule_set, asset_ids=asset_ids)
+            run_exclusion(rule_ids=rule_ids, rule_set=rule_set, asset_ids=asset_ids, rule_names=rule_names)
     else:
         try:
             if ',' not in rule_set_id:
-                run_exclusion(rule_ids=rule_ids, rule_set=rule_set_id, asset_ids=asset_ids)
+                # Only one rule set execution
+                run_exclusion(rule_ids=rule_ids, rule_set=rule_set_id, asset_ids=asset_ids, rule_names=rule_names)
             else:
+                # list of rule sets to exclude
                 rule_sets = rule_set_id.split(',')
                 for rule_set in rule_sets:
-                    run_exclusion(rule_ids=rule_ids, rule_set=rule_set.replace(" ",""), asset_ids=asset_ids)
+                    run_exclusion(rule_ids=rule_ids, rule_set=rule_set.replace(" ",""), asset_ids=asset_ids, rule_names=rule_names)
         except Exception as e:
             logging.error(f"Something went wrong - {e}")
