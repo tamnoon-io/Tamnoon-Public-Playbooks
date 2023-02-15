@@ -13,14 +13,21 @@ https://boto3.amazonaws.com/v1/documentation/api/latest/guide/index.html
 1. Use the script - resourceTagging.py
 
 
-      
 ## Prerequisites 
 1. AWS CLI Installed 
 2. Python v3.6  and above + boto3 package installed ( pip install boto3)
 
 ## Notes:
-Currently, when the script is executed with multi assets it will generate exclusion per rule,ruleset,asset 
-Soon we will support of executing one exclusion per multi assets 
+The dynamic tagging currently support only the asset id or arn 
+
+## Example use case 
+### Tag all snapshots to allocate and trace their cost. 
+#### Step 1 - Tag your resources with a specific cost tag using this playbook 
+        Execute the script - python3 resourceTagging.py --profile <aws_profile> --action tag --service ec2:snapshot  --tagKey costAllocTag --tagValue {{id}}
+#### Step 2 - Activate the tag as a cost allocation tag
+        https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/activating-tags.html
+#### Step 3 - After 24 hours from the activation, you can start tracing your snapshot's cost under the cost explorer screen when you group by the activated tag (in our example costAllocTag)
+
 
 
 ## Script help page 
