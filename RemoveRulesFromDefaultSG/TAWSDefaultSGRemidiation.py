@@ -90,12 +90,18 @@ def _remove_defaut_sg_rules(sg, ec2_resource, is_dry_run):
     if len(sg['IpPermissions']) == 0:
         logging.info(f"No ingress rules to remove for sg- {sg['GroupName']}-{sg['GroupId']}")
     else:
-        security_group.revoke_ingress(IpPermissions=sg['IpPermissions'], DryRun=is_dry_run)
+        if is_dry_run:
+            logging.info(f"#########  dry run - revoke ingress  {sg['IpPermissions']}!!! - no action executed ##########")
+        else:
+            security_group.revoke_ingress(IpPermissions=sg['IpPermissions'], DryRun=is_dry_run)
 
     if len(sg['IpPermissionsEgress']) == 0:
         logging.info(f"No egress rules to remove for sg- {sg['GroupName']}-{sg['GroupId']}")
     else:
-        security_group.revoke_egress(IpPermissions=sg['IpPermissionsEgress'], DryRun=is_dry_run)
+        if is_dry_run:
+            logging.info(f"#########  dry run - revoke egress {sg['IpPermissionsEgress']}!!! - no action executed ##########")
+        else:
+            security_group.revoke_egress(IpPermissions=sg['IpPermissionsEgress'], DryRun=is_dry_run)
 
 
 def _auth_ingress(permissions, sg_id, region_ec2_resource):
@@ -153,7 +159,7 @@ if __name__ == '__main__':
     is_rollback = args.rollBack
     state_path = args.statePath
     sg_to_rb = args.sgTorollBack
-    is_dry_run = args.dryRun
+
 
     if is_rollback:
         logging.info(f"Start execute security group roll back for - {sg_to_rb}")
@@ -188,31 +194,44 @@ if __name__ == '__main__':
                 # get all the nics in teh region to check attachment of default sg
                 response_nics = region_client.describe_network_interfaces()
 
+                # get all the lambdas to see which on eis attached to that sg
+                region_client = region_session.client('lambda')
+                response_lambda = region_client.list_functions()
+
+
                 is_attached = False
                 for sg in res_desc_sg['SecurityGroups']:
+                    attached_nics = []
+                    attached_lambdas = []
                     sg_name = sg['GroupName']
                     sg_id = sg['GroupId']
                     sg_ip_permissions = sg['IpPermissions']
                     sg_ip_permissions_egress = sg['IpPermissionsEgress']
                     # in case that we focus only on default sg
                     if sg_name != 'default': continue
-
+                    # check nics
                     for nic in response_nics['NetworkInterfaces']:
                         for group in nic['Groups']:
-                            if group['GroupId'] == sg['GroupId']:
-                                is_attached = True
-                                break
-                        if is_attached:
-                            break
+                            if group['GroupId'] == sg_id:
+                                attached_nics.append(nic['NetworkInterfaceId'])
+                    # check also lambdas
+                    for lambda_asset in response_lambda['Functions']:
+                        if 'VpcConfig' in lambda_asset and 'SecurityGroupIds' in lambda_asset['VpcConfig']:
+                            for group in lambda_asset['VpcConfig']['SecurityGroupIds']:
+                                if group == sg_id:
+                                    attached_lambdas.append(lambda_asset['FunctionName'])
 
-                    if is_attached:
+                    if len(attached_nics)>0:
                         logging.warning(
                             f"security group name - {sg['GroupName']}, id - {sg['GroupId']} is attahced to some nics in region - {region['RegionName']} going to skip it")
-                    else:
-                        logging.info(
-                            f"Going to remove the Inbound and Outbound rules from SecurityGroup - {sg['GroupId']} in Region - {region['RegionName']}")
+                        logging.warning(f"nics - {','.join(attached_nics)}")
 
+                    if len(attached_lambdas)>0:
+                        logging.warning(
+                            f"security group name - {sg['GroupName']}, id - {sg['GroupId']} is attahced to some lambdas in region - {region['RegionName']} going to skip it")
+                        logging.warning(f"lambdas - {','.join(attached_lambdas)}")
 
+                    if not len(attached_nics)>0 and not len(attached_lambdas)>0:
                         # Save the current sg in the sg state for rollback purpose
                         if region['RegionName'] not in state_dict:
                             state_dict[region['RegionName']] = dict()
@@ -220,10 +239,9 @@ if __name__ == '__main__':
                         state_dict[region['RegionName']][sg_id]['Ingress'] = sg_ip_permissions
                         state_dict[region['RegionName']][sg_id]['Egress'] = sg_ip_permissions_egress
 
-                        if not is_dry_run:
-                            _remove_defaut_sg_rules(sg, region_ec2_resource, is_dry_run)
-                        else:
-                            logging.info(f"#########  This is a dry run!!! - no action executed ##########")
+
+                        _remove_defaut_sg_rules(sg, region_ec2_resource, is_dry_run)
+
         except Exception as e:
             logging.info(f"Persist the state")
             with open(state_path, "w") as state_path_json:
