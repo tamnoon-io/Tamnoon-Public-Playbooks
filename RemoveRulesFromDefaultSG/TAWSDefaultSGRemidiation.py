@@ -85,23 +85,24 @@ def _load_from_file(result_file):
         return json.load(result_json)
 
 
-def _remove_defaut_sg_rules(sg, ec2_resource, is_dry_run):
+def _remove_defaut_sg_rules(sg, ec2_resource, is_dry_run, dry_run_result):
+
     security_group = ec2_resource.SecurityGroup(sg['GroupId'])
     if len(sg['IpPermissions']) == 0:
-        logging.info(f"No ingress rules to remove for sg- {sg['GroupName']}-{sg['GroupId']}")
+        logging.info(f"No ingress rules to remove for {sg['GroupId']}")
     else:
         if is_dry_run:
-            logging.info(f"#########  dry run - revoke ingress  {sg['IpPermissions']}!!! - no action executed ##########")
+            dry_run_result.add(sg['GroupId'])
         else:
-            security_group.revoke_ingress(IpPermissions=sg['IpPermissions'], DryRun=is_dry_run)
+            security_group.revoke_ingress(IpPermissions=sg['IpPermissions'])
 
     if len(sg['IpPermissionsEgress']) == 0:
-        logging.info(f"No egress rules to remove for sg- {sg['GroupName']}-{sg['GroupId']}")
+        logging.info(f"No egress rules to remove for {sg['GroupId']}")
     else:
         if is_dry_run:
-            logging.info(f"#########  dry run - revoke egress {sg['IpPermissionsEgress']}!!! - no action executed ##########")
+            dry_run_result.add(sg['GroupId'])
         else:
-            security_group.revoke_egress(IpPermissions=sg['IpPermissionsEgress'], DryRun=is_dry_run)
+            security_group.revoke_egress(IpPermissions=sg['IpPermissionsEgress'])
 
 
 def _auth_ingress(permissions, sg_id, region_ec2_resource):
@@ -181,8 +182,10 @@ if __name__ == '__main__':
             regions = client.describe_regions()
 
         try:
+            dry_run_result = dict()
             # For each region in aws it will create specific ec2 client and ec2 resource
             for region in regions['Regions']:
+                dry_run_result[region['RegionName']] = set()
 
                 region_session = boto3.Session(profile_name=aws_profile, region_name=region['RegionName'])
                 region_ec2_resource = region_session.resource('ec2')
@@ -200,6 +203,7 @@ if __name__ == '__main__':
 
 
                 is_attached = False
+
                 for sg in res_desc_sg['SecurityGroups']:
                     attached_nics = []
                     attached_lambdas = []
@@ -239,13 +243,21 @@ if __name__ == '__main__':
                         state_dict[region['RegionName']][sg_id]['Ingress'] = sg_ip_permissions
                         state_dict[region['RegionName']][sg_id]['Egress'] = sg_ip_permissions_egress
 
+                        _remove_defaut_sg_rules(sg, region_ec2_resource, is_dry_run,  dry_run_result[region['RegionName']])
 
-                        _remove_defaut_sg_rules(sg, region_ec2_resource, is_dry_run)
+            if is_dry_run:
+                logging.info("####################### Dry Run execution - Nothing executed #######################")
+                for region in dry_run_result:
+                    dry_run_result[region] = list(dry_run_result[region])
+                json_formatted_str = json.dumps(dry_run_result, indent=2)
+                print(json_formatted_str)
+
 
         except Exception as e:
             logging.info(f"Persist the state")
             with open(state_path, "w") as state_path_json:
                 json.dump(state_dict, state_path_json)
+                raise Exception(e)
 
         logging.info(f"Persist the state")
         with open(state_path, "w") as state_path_json:
