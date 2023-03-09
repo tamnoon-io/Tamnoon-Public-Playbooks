@@ -55,7 +55,8 @@ def print_help():
         '\n\n'
         '\t\t\t Parameter Usage:\n'
         '\t\t\t\t logLevel - The logging level (optional). Default = Info\n'
-        '\t\t\t\t ruleSetId - list of the rule sets ids to exclude the rule from - (Could be "All" and then the script will run against all rule sets)\n'
+        '\t\t\t\t ruleSetId - list of the rule sets ids to exclude the rule from - (Could be "All" and then the script will run against all rule sets)'
+        '\t\t\t\t\t Can be also a list of rule sets to ignore (exclude all except those rule sets) - use ^ as first char - ^-5,-3,-2 ---> all excpet -5,-3,-2\n'
         '\t\t\t\t ruleIds - A comma seperated string for ids to exclude - for example "D9.AWS.NET.AG2.3.Instance.9000,D9.AWS.NET.AG2.3.Instance.22"\n'
         '\t\t\t\t rulesNames - A comma seperated string for rules names to exclude - for example - "Ensure that S3 Bucket policy doesnt allow actions from all principals without a condition, Ensure that S3 bucket ACLs don\'t allow \'FULL_CONTROL\' access for anonymous / AWS authenticated users"  '
         '\t\t\t\t assetIds - A comma seperated string for asset ids to exclude for example "i-12345,i-67893"\n'
@@ -98,21 +99,29 @@ def extract_rules(rule_ids, rule_Set_id, rule_names):
 
 
     if not rule_ids and not rule_names:
-        logging.error(f"Execution must include either rule_ids or rule_names!!")
-        raise Exception(f"Execution must include either rule_ids or rule_names")
-
-    rules_as_a_list = rules_ids_as_a_list + rule_names_as_a_list
-
-    for rule in rules_as_a_list:
         for extracted_rule in extracted_rules['rules']:
-            if rule == extracted_rule['ruleId'] or rule == extracted_rule['name']:
                 result.append({
                     "id": extracted_rule['ruleId'],
                     "logicHash": extracted_rule['logicHash'],
                     "name": extracted_rule['name']
-        })
+                })
 
-    return result
+        return result
+    else:
+
+
+        rules_as_a_list = rules_ids_as_a_list + rule_names_as_a_list
+
+        for rule in rules_as_a_list:
+            for extracted_rule in extracted_rules['rules']:
+                if rule == extracted_rule['ruleId'] or rule.lower() == extracted_rule['name'].lower():
+                    result.append({
+                        "id": extracted_rule['ruleId'],
+                        "logicHash": extracted_rule['logicHash'],
+                        "name": extracted_rule['name']
+            })
+
+        return result
 
 def get_all_rule_sets():
     results_ids = []
@@ -166,9 +175,12 @@ def need_to_run_exclusion(asset, rule_set, rules):
         # no potential exclusion found return true
         return True
     for exclusion in sub_set:
-
         curr_rule_ids = list()
         curr_rule_names = list()
+        if not exclusion['rules']:
+            logging.info(
+                f"No need to run Exclusion for {rule_set} for rules - {rule_names} and asset - {asset}, There is Exclusion for the entire ruleset!")
+            return False
         for curr_rule in exclusion['rules']:
             curr_rule_ids.append(curr_rule['id'])
             curr_rule_names.append((curr_rule['name']))
@@ -288,7 +300,7 @@ if __name__ == '__main__':
         'Accept': 'application/json'
     }
 
-
+    logging.info(f"Building the exclusion cache by getting all defined exclusion from Dome9")
     r = requests.get('https://api.dome9.com/v2/Compliance/Exclusion', headers=headers,
                      auth=(d9key, d9secret))
     r.raise_for_status()
@@ -302,6 +314,15 @@ if __name__ == '__main__':
             run_exclusion(rule_ids=rule_ids, rule_set=rule_set, asset_ids=asset_ids, rule_names=rule_names)
     else:
         try:
+            if rule_set_id[0] == '^':
+                rule_set_id_to_ignore = [int(number_rule_set_id) for number_rule_set_id in rule_set_id[1:len(rule_set_id)].split(',')]
+                rule_set_id = list()
+                all_rule_sets_ids = get_all_rule_sets()
+                for rule_set in all_rule_sets_ids:
+                    if rule_set not in rule_set_id_to_ignore:
+                        rule_set_id.append(rule_set)
+                rule_set_id = ','.join([str(i)for i in rule_set_id])
+
             if ',' not in rule_set_id:
                 # Only one rule set execution
                 run_exclusion(rule_ids=rule_ids, rule_set=rule_set_id, asset_ids=asset_ids, rule_names=rule_names)
