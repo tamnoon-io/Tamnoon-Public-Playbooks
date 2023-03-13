@@ -7,7 +7,7 @@
 This playbook will help you to execute different operations over the EC2 service
 The Supported operations are:
 
-        1. Snapshot - delete, ls
+        1. Snapshot - delete,ls
         2. SecurityGroup - delete
     
 It uses the exact AWS Authentication fallback mechanism.
