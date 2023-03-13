@@ -7,7 +7,7 @@
 This playbook will help you to execute different operations over the EC2 service
 The Supported operations are:
 
-        1. Snapshot - delete,ls
+        1. Snapshot - delete,ls, encrypt
         2. SecurityGroup - delete
     
 It uses the exact AWS Authentication fallback mechanism.
@@ -31,7 +31,7 @@ After authentication via AWS API, the script execution will run on the same AWS 
 
 ## Script help page 
 
-                     ___                                                                                           
+			 ___                                                                                           
 			(   )                                                                            .-.           
 			 | |_       .---.   ___ .-. .-.    ___ .-.     .--.     .--.    ___ .-.         ( __)   .--.   
 			(   __)    / .-, \ (   )   '   \  (   )   \   /    \   /    \  (   )   \        (''")  /    \  
@@ -48,7 +48,10 @@ After authentication via AWS API, the script execution will run on the same AWS 
 			 Dependencies:
 				 
 			 Supported Actions:
-				 1. Snapshot - delete, ls
+				 1. Snapshot - 
+						 delete, ls
+						 encrypt - Can support optional param to be sent as actionParmas - KmsKeyId, the kms key to use for encryption
+							 If this parameter is not specified, your KMS key for Amazon EBS is used 
 				 2. SecurityGroup - delete  
 
 				 The script is based on AWS API and documentation 
@@ -56,14 +59,14 @@ After authentication via AWS API, the script execution will run on the same AWS 
 
 
 			 Executions Examples:
-				 python3 EC2Helper.py --profile <aws_profile> --type <The ec2 service type> --action <The action to execute> --params <the params for the action>
-				 python3 EC2Helper.pt  --type snapshot --action delete --assetIds "snap-1,snap-2" --dryRun True
+				 python3 EC2Helper.py --profile <aws_profile> --type <The ec2 service type> --action <The action to execute> --actionParmas <the params for the action> --assetIds <list of assets to work on, comma-separated>
+				 python3 EC2Helper.py  --type snapshot --action delete --assetIds "snap-1,snap-2" --dryRun True
 
 
 			 Parameter Usage:
 				 logLevel - The logging level (optional). Default = Info
 				 profile -  The AWS profile to use to execute this script
 				 type -     The AWS EC2 asset type - for example - instance,snapshot,security-group ....
-				 action -   The EC2 action to execute - delete, ls ...
-				 actionParmas  - A key value Dictionary of action params"
+				 action -   The EC2 action to execute - (snapshot-delete, sg-delete)
+				 actionParmas (optional)  - A key value Dictionary of action params. each " should be \" 
 				 assetIds  - List of assets ids (string seperated by commas)"
