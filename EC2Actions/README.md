@@ -9,6 +9,7 @@ The Supported operations are:
 
         1. Snapshot - delete,ls, encrypt
         2. SecurityGroup - delete
+        3. Vpc - create_flow_log
     
 It uses the exact AWS Authentication fallback mechanism.
 If there is no profile, use the credentials for AWS from the environment variable.
@@ -31,7 +32,7 @@ After authentication via AWS API, the script execution will run on the same AWS 
 
 ## Script help page 
 
-			 ___                                                                                           
+                     ___                                                                                           
 			(   )                                                                            .-.           
 			 | |_       .---.   ___ .-. .-.    ___ .-.     .--.     .--.    ___ .-.         ( __)   .--.   
 			(   __)    / .-, \ (   )   '   \  (   )   \   /    \   /    \  (   )   \        (''")  /    \  
@@ -50,9 +51,18 @@ After authentication via AWS API, the script execution will run on the same AWS 
 			 Supported Actions:
 				 1. Snapshot - 
 						 delete, ls
-						 encrypt - Can support optional param to be sent as actionParmas - KmsKeyId, the kms key to use for encryption
-							 If this parameter is not specified, your KMS key for Amazon EBS is used 
+						 encrypt
+							 actionParams:
+								 KmsKeyId (OPTIONAL) 
+									 The kms key to use for encryption, If this parameter is not specified, your KMS key for Amazon EBS is used
 				 2. SecurityGroup - delete  
+				 3. Vpc - 
+						 create_flow_log
+							 actionParams:
+								 DeliverLogsPermissionArn (REQUIRED)
+									 The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account. 
+								 LogGroupName (OPTIONAL)
+									 The name of a new or existing CloudWatch Logs log group where Amazon EC2 publishes your flow logs. 
 
 				 The script is based on AWS API and documentation 
 				 https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html

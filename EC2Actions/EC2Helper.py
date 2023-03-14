@@ -41,9 +41,18 @@ def print_help():
         '\t\t\t Supported Actions:\n'
         '\t\t\t\t 1. Snapshot - \n'
         '\t\t\t\t\t\t delete, ls\n'
-        '\t\t\t\t\t\t encrypt - Can support optional param to be sent as actionParmas - KmsKeyId, the kms key to use for encryption\n'
-        '\t\t\t\t\t\t\t If this parameter is not specified, your KMS key for Amazon EBS is used \n'
+        '\t\t\t\t\t\t encrypt\n'
+        '\t\t\t\t\t\t\t actionParams:\n'
+        '\t\t\t\t\t\t\t\t KmsKeyId (OPTIONAL) \n'
+        '\t\t\t\t\t\t\t\t\t The kms key to use for encryption, If this parameter is not specified, your KMS key for Amazon EBS is used\n'
         '\t\t\t\t 2. SecurityGroup - delete  \n'
+        '\t\t\t\t 3. Vpc - \n'
+        '\t\t\t\t\t\t create_flow_log\n'
+        '\t\t\t\t\t\t\t actionParams:\n'
+        '\t\t\t\t\t\t\t\t DeliverLogsPermissionArn (REQUIRED)\n'
+        '\t\t\t\t\t\t\t\t\t The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account. \n'
+        '\t\t\t\t\t\t\t\t LogGroupName (OPTIONAL)\n'
+        '\t\t\t\t\t\t\t\t\t The name of a new or existing CloudWatch Logs log group where Amazon EC2 publishes your flow logs. \n'
 
 
         '\n'
@@ -75,7 +84,6 @@ def setup_session(profile):
     return boto3.Session()
 
 
-
 def do_snapshot_delete(resource, asset_id, dry_run):
     """
     Thi function execute delete for single snapshot id
@@ -89,8 +97,8 @@ def do_snapshot_delete(resource, asset_id, dry_run):
     try:
         response = snapshot.delete(DryRun=dry_run)
     except botocore.exceptions.ClientError as ce:
-       if ce.response['Error']['Code'] == 'DryRunOperation':
-           logging.warning(f"This is a Dry run - operation would have succeeded")
+        if ce.response['Error']['Code'] == 'DryRunOperation':
+            logging.warning(f"This is a Dry run - operation would have succeeded")
 
 
 def do_snapshot_ls(session):
@@ -117,8 +125,8 @@ def do_snapshot_encrypt(session, asset_id, dry_run, kms_key_id=None):
     if snap['Encrypted']:
         logging.info(f"Snapshot {asset_id} is already encrypted, going to skip this execution")
 
-    #response = ec2_client.get_ebs_encryption_by_default()
-    #only_clone = response['EbsEncryptionByDefault']
+    # response = ec2_client.get_ebs_encryption_by_default()
+    # only_clone = response['EbsEncryptionByDefault']
     desc = f'Tamnoon-Automation, encrypted copy for - {asset_id}'
 
     if kms_key_id:
@@ -137,7 +145,6 @@ def do_snapshot_encrypt(session, asset_id, dry_run, kms_key_id=None):
             SourceSnapshotId=asset_id
         )
     logging.info(f"Snapshot - {asset_id} was encrypted")
-
 
 
 def do_snapshot_action(session, dry_run, action, asset_ids, action_parmas=None):
@@ -201,6 +208,62 @@ def do_sg_action(session, dry_run, action, asset_ids):
             do_sg_delete(resource=resource, asset_id=asset_id, dry_run=dry_run)
 
 
+def do_vpc_action(session, dry_run, action, asset_ids, parmas=None):
+    """
+    This i the function that handle the vpc actions
+    :param session:
+    :param dry_run:
+    :param action:
+    :param asset_ids:
+    :param action_parmas:
+    :return:
+    """
+    log_group_name = None
+    deliver_logs_permission_arn = None
+
+    if not parmas or 'DeliverLogsPermissionArn' not in parmas:
+        logging.error(f"Can't create a vpc flow log, missing required configuration param - DeliverLogsPermissionArn\n"
+                      f"The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account.")
+        return -1
+
+    deliver_logs_permission_arn = parmas['DeliverLogsPermissionArn']
+    if action == 'create_flow_log':
+        for asset_id in asset_ids:
+            if not 'LogGroupName' in parmas:
+                log_group_name = f"Vpc_FlowLog_{asset_id}"
+            else:
+                log_group_name = parmas['LogGroupName']
+
+            logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
+            do_create_flow_log(session=session, asset_id=asset_id, dry_run=dry_run, log_group_name=log_group_name,
+                               deliver_logs_permission_arn=deliver_logs_permission_arn)
+
+
+def do_create_flow_log(session, dry_run, asset_id, log_group_name=None, deliver_logs_permission_arn=None):
+    ec2_client = session.client('ec2')
+
+    describe_response = ec2_client.describe_flow_logs(
+        Filters=[
+            {
+                'Name': 'resource-id',
+                'Values': [asset_id]
+            },
+        ],
+    )
+
+    if len(describe_response['FlowLogs']) > 0:
+        logging.info(f"No Need to create a vpc flow log for vpc - {asset_id}, it's already exists")
+        return
+
+    response = ec2_client.create_flow_logs(
+        LogGroupName=log_group_name,
+        ResourceIds=[asset_id],
+        DeliverLogsPermissionArn=deliver_logs_permission_arn,
+        ResourceType='VPC',
+        TrafficType='ALL',
+        LogDestinationType='cloud-watch-logs')
+
+
 if __name__ == '__main__':
 
     # TODO - Work on desc for params
@@ -210,9 +273,8 @@ if __name__ == '__main__':
     parser.add_argument('--type', required=True, type=str)
     parser.add_argument('--action', required=True, type=str)
     parser.add_argument('--assetIds', required=True, type=str)
-    parser.add_argument('--actionParmas', required=False, type=json.loads, default=None)
+    parser.add_argument('--actionParams', required=False, type=json.loads, default=None)
     parser.add_argument('--dryRun', required=False, type=bool, default=False)
-
 
     if len(sys.argv) == 1 or '--help' in sys.argv or '-h' in sys.argv:
         print_help()
@@ -228,30 +290,16 @@ if __name__ == '__main__':
     action = args.action
     asset_ids = args.assetIds
     asset_ids = asset_ids.split(',')
-    params = args.actionParmas
+    params = args.actionParams
     dry_run = args.dryRun
     asset_type = args.type
 
-
     logging.info("Going to setup resource")
     session = setup_session(profile)
-
 
     if asset_type == 'snapshot':
         do_snapshot_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=params)
     if asset_type == 'security-group':
         do_sg_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    if asset_type == 'vpc':
+        do_vpc_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, parmas=params)
