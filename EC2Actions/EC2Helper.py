@@ -68,7 +68,7 @@ def print_help():
         '\t\t\t\t profile -  The AWS profile to use to execute this script\n'
         '\t\t\t\t type -     The AWS EC2 asset type - for example - instance,snapshot,security-group ....\n'
         '\t\t\t\t action -   The EC2 action to execute - (snapshot-delete, sg-delete)\n'
-        '\t\t\t\t actionParmas (optional)  - A key value Dictionary of action params. each " should be \\" \n'
+        '\t\t\t\t actionParmas (optional)  - A key value Dictionary of action params. each " should be \\" for exampel {\\"key1\\":\\"val1\\"}\n'
         '\t\t\t\t assetIds  - List of assets ids (string seperated by commas)"\n'
         '\n\n'
 
