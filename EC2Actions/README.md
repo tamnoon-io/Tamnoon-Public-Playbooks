@@ -78,5 +78,5 @@ After authentication via AWS API, the script execution will run on the same AWS 
 				 profile -  The AWS profile to use to execute this script
 				 type -     The AWS EC2 asset type - for example - instance,snapshot,security-group ....
 				 action -   The EC2 action to execute - (snapshot-delete, sg-delete)
-				 actionParmas (optional)  - A key value Dictionary of action params. each " should be \" 
+				 actionParmas (optional)  - A key value Dictionary of action params. each " should be \" for exampel {\"key1\":\"val1\"} 
 				 assetIds  - List of assets ids (string seperated by commas)"
