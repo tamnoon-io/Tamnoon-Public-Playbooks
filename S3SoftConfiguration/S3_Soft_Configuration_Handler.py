@@ -1,6 +1,5 @@
 import argparse
 import json
-import requests
 import logging
 import sys
 import boto3
@@ -43,24 +42,31 @@ def print_help():
         '\t\t\t This script will know how to handle soft configuration for remediate s3 misconfiguration\n '
         '\t\t\t Supported Actions:\n'
         '\t\t\t\t 1. Bucket Server side logging\n'
+        '\t\t\t\t\t params -  "{\"target_bucket\":<The name of the s3 bucket that will contain the logs>}"\n'
         '\t\t\t\t 2. Bucket Server side encryption\n'
+        '\t\t\t\t\t params- "{\"kms\":<The arn of the kms managed key to use>}\n'
         '\t\t\t\t 3. Bucket Versioning\n'
         '\t\t\t\t 4. Bucket MFA deletion protection\n'
+        '\t\t\t\t\t params -"{\"mfa\":<The concatenation of the authentication devices serial number, a space, and the value that is displayed on your authentication device>}\n'
+        '\t\t\t\t\t\t "for example - "{\"mfa\":\"arn:aws:iam::123456789:mfa/bob 572055\"}" where 572055 is the serial from that mfa on execution time\n'
+        '\t\t\t\t 4. Bucket Configure public access\n'
+        '\t\t\t\t\t\t params (optional) -BlockPublicAcls or IgnorePublicAcls or BlockPublicPolicy or RestrictPublicBuckets - True/False\n'
+        '\t\t\t\t\tbased on - https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html#access-control-block-public-access-policy-status\n'
         
         '\n'
         '\t\t\t\t The script is based on AWS API and documentation \n'
         '\t\t\t\t https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html\n'
         '\n\n'
         '\t\t\t Executions Examples:\n'
-        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action <The S3 action to execute> --bucketName <The S3 bucket name>\n'
+        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action <The S3 action to execute> --bucketNames <The S3 bucket name>\n'
         '\t\t\t\t --actionParmas <key value dictionary with the action execution params> --revert <true/false if to revert this action>\n\n'
-        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action server_logging  --bucketName <The S3 bucket name>\n'
+        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action server_logging  --bucketNames <The S3 bucket name>\n'
         '\t\t\t\t --actionParmas {"target_bucket":<the target buckt to contain the logs>} --revert <true/false if to revert this action>\n\n'
-        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action encryption  --bucketName <The S3 bucket name> \n'
+        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action encryption  --bucketNames <The S3 bucket name> \n'
         '\t\t\t\t --actionParmas {"kms":<the target buckt to contain the logs>} --revert <true/false if to revert this action>\n\n'
-        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action versioning  --bucketName <The S3 bucket name>\n'
+        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action versioning  --bucketNames <The S3 bucket name>\n'
         '\t\t\t\t --revert <true/false if to revert this action>\n\n'
-        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action mfa_protection  --bucketName <The S3 bucket name>\n'
+        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action mfa_protection  --bucketNames <The S3 bucket name>\n'
         '\t\t\t\t --actionParmas {"mfa":<The concatenation of the authentication devices serial number, a space, and the value that is displayed on your authentication device>}  --revert <true/false if to revert this action>\n\n'
         
         '\n\n'
@@ -70,15 +76,8 @@ def print_help():
         '\t\t\t\t action -   The S3 action to execute - (server_logging, encryption, versioning, mfa_protection)\n'
         '\t\t\t\t\t * for mfa_protection you have to execute the script as the root user of the account according to: \n'
         '\t\t\t\t\t https://docs.aws.amazon.com/AmazonS3/latest/userguide/MultiFactorAuthenticationDelete.html\n'
-        '\t\t\t\t bucketName - The bucket name\n'
-        '\t\t\t\t actionParmas  - A key value Dictionary of action params:"\n'
-        '\t\t\t\t\t 1. for action - server_logging:"\n'
-        '\t\t\t\t\t\t "{\"target_bucket\":<The name of the s3 bucket that will contain the logs>}"\n'
-        '\t\t\t\t\t 2. for action - encryption:"\n'
-        '\t\t\t\t\t\t "{\"kms\":<The arn of the kms managed key to use>}\n'
-        '\t\t\t\t\t 3. for action - mfa_protection:"\n'
-        '\t\t\t\t\t\t "{\"mfa\":<The concatenation of the authentication devices serial number, a space, and the value that is displayed on your authentication device>}\n'
-        '\t\t\t\t\t\t "for example - "{\"mfa\":\"arn:aws:iam::123456789:mfa/bob 572055\"}" where 572055 is the serial from that mfa on execution time\n'
+        '\t\t\t\t bucketNames - List of The bucket names for example b1,b2,b3\n'
+        '\t\t\t\t actionParmas  - A key value Dictionary of action params"\n'
         '\t\t\t\t revert  - A true false flag to a sign if this action need to revert"\n'
         '\n\n'
 
@@ -87,15 +86,31 @@ def print_help():
 
 
 
-
-def setup_client(profile):
+def setup_session(profile=None, region=None, aws_access_key=None, aws_secret=None):
+    '''
+    This method setup the boto session to AWS
+    :param profile:  The aws credentials profile as they defined on the machine (~/.aws/credentials)
+    :param region:   The aws target region to execute on
+    :param aws_access_key:
+    :param aws_secret:
+    :return:
+    '''
     if profile:
-        session = boto3.Session(profile_name=profile)
-        client = session.client('s3')
-        return client
+        if region:
+            return boto3.Session(profile_name=profile, region_name=region)
+        return boto3.Session(profile_name=profile)
+    if aws_access_key and aws_secret:
+        if region:
+            return boto3.Session(region_name=region, aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
+        return boto3.Session(aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
+    if region:
+        return boto3.Session(region_name=region)
+    return boto3.Session()
 
-    client = boto3.client('s3')
+def setup_client(session):
+    client = session.client('s3')
     return client
+
 
 
 def do_logging(client, bucket_name, target_bucket_name, is_revert = False):
@@ -216,14 +231,31 @@ def do_mfa_protection(client, bucket_name, mfa):
         )
 
 
+def do_block_public_access(block_public_acl, ignore_public_acl, block_public_policy, restrict_public_bucket,
+                           bucket_name):
+    logging.info(f"Going to block public access to bucket- {bucket_name}")
+    response = client.put_public_access_block(
+        Bucket=bucket_name,
+        PublicAccessBlockConfiguration={
+            'BlockPublicAcls': block_public_acl,
+            'IgnorePublicAcls': ignore_public_acl,
+            'BlockPublicPolicy': block_public_policy,
+            'RestrictPublicBuckets': restrict_public_bucket
+        }
+    )
+
+
+
 if __name__ == '__main__':
 
     # TODO - Work on desc for params
     parser = argparse.ArgumentParser()
     parser.add_argument('--logLevel', required=False, type=str, default="INFO")
     parser.add_argument('--profile', required=False, default=None)
+    parser.add_argument('--awsAccessKey', required=False, type=str, default=None)
+    parser.add_argument('--awsSecret', required=False, type=str, default=None)
     parser.add_argument('--action', required=True, type=str)
-    parser.add_argument('--bucketName', required=True, type=str)
+    parser.add_argument('--bucketNames', required=True, type=str)
     parser.add_argument('--actionParmas', required=False, type=str, default=None)
     parser.add_argument('--revert', required=False, type=bool,  default=None)
 
@@ -238,41 +270,61 @@ if __name__ == '__main__':
 
     result = None
     profile= args.profile
+    aws_access_key = args.awsAccessKey
+    aws_secret = args.awsSecret
     action = args.action
-    bucket_name = args.bucketName
+    bucket_names = args.bucketNames
+    list_of_buckets = bucket_names.split(',')
     params = json.loads(args.actionParmas) if args.actionParmas else None
     is_revert = args.revert if args.revert else False
 
     logging.info("Going to setup client")
-    client = setup_client(profile)
+    session = setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
+    client = setup_client(session)
 
-    if action == 'server_logging':
-        if not params:
-            logging.error(f"Action - server_logging must include action params property")
-            exit (1)
-        if "target_bucket" not in params:
-            logging.error(f"Action - server_logging must include target_bucket param in the action params property")
-            exit(1)
-        do_logging(client=client, bucket_name=bucket_name, target_bucket_name=params['target_bucket'], is_revert=is_revert)
+    for bucket_name in list_of_buckets:
+        logging.info(f"Going to work on bucket - {bucket_name}")
+        if action == 'server_logging':
+            if not params:
+                logging.error(f"Action - server_logging must include action params property")
+                exit (1)
+            if "target_bucket" not in params:
+                logging.error(f"Action - server_logging must include target_bucket param in the action params property")
+                exit(1)
+            do_logging(client=client, bucket_name=bucket_name, target_bucket_name=params['target_bucket'], is_revert=is_revert)
 
-    if action == "encryption":
-        kms_key_id = None
-        if params and 'kms' in params:
-            kms_key_id = params['kms']
-        do_encryption(client=client, bucket_name=bucket_name, kms_key_id=kms_key_id, is_revert=is_revert)
+        if action == "encryption":
+            kms_key_id = None
+            if params and 'kms' in params:
+                kms_key_id = params['kms']
+            do_encryption(client=client, bucket_name=bucket_name, kms_key_id=kms_key_id, is_revert=is_revert)
 
-    if action == "versioning":
-        do_versioning(client=client, bucket_name=bucket_name, is_revert=is_revert)
+        if action == "versioning":
+            do_versioning(client=client, bucket_name=bucket_name, is_revert=is_revert)
 
-    if action == "mfa_protection":
-        if not params:
-            logging.error(f"Action - mfa_protection must include action params property")
-            exit (1)
-        if "mfa" not in params:
-            logging.error(f"Action - mfa_protection must include mfa param in the action params property")
-            exit(1)
-        mfa = params['mfa']
-        do_mfa_protection(client=client, bucket_name=bucket_name, mfa=mfa)
+        if action == "mfa_protection":
+            if not params:
+                logging.error(f"Action - mfa_protection must include action params property")
+                exit (1)
+            if "mfa" not in params:
+                logging.error(f"Action - mfa_protection must include mfa param in the action params property")
+                exit(1)
+            mfa = params['mfa']
+            do_mfa_protection(client=client, bucket_name=bucket_name, mfa=mfa)
+
+        if action == "configure_public_access":
+            if not params:
+                block_public_acl = True
+                ignore_public_acl = True
+                block_public_policy = True
+                restrict_public_bucket = True
+            else:
+                block_public_acl = params["BlockPublicAcls"] if "BlockPublicAcls" in params else False
+                ignore_public_acl = params['IgnorePublicAcls'] if "IgnorePublicAcls" in params else False
+                block_public_policy = params["BlockPublicPolicy"] if "BlockPublicPolicy" in params else False
+                restrict_public_bucket = params["RestrictPublicBuckets"] if "RestrictPublicBuckets" in params else False
+            do_block_public_access(block_public_acl=block_public_acl, ignore_public_acl=ignore_public_acl, block_public_policy=block_public_policy, restrict_public_bucket=restrict_public_bucket, bucket_name=bucket_name)
+
 
         
         
