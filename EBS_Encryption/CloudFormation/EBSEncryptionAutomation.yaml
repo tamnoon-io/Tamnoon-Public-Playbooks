@@ -420,7 +420,7 @@ Resources:
                 VolumeId: "{{volumeId}}"
           - name: attachNewEBSVolume
             action: aws:executeAutomation
-            timeoutSeconds: 180
+            timeoutSeconds: 1800
             onFailure: step:detachNewVolume
             nextStep: applyDeleteOnTerminationValue
             maxAttempts: 1
@@ -456,7 +456,7 @@ Resources:
               DesiredState: "{{describeInstance.instanceState}}"
           - name: attachOriginalVolume
             action: aws:executeAutomation
-            timeoutSeconds: 180
+            timeoutSeconds: 1800
             onFailure: Abort
             isEnd: true
             maxAttempts: 1
