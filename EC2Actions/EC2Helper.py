@@ -47,15 +47,23 @@ def print_help():
         '\t\t\t Supported Actions:\n'
         '\t\t\t\t 1. Snapshot - \n'
         '\t\t\t\t\t\t delete, ls\n'
-        '\t\t\t\t\t\t\t example python3 EC2Helper.py  --type snapshot --action delete --assetIds "snap-1,snap-2" --dryRun True\n'
-        '\t\t\t\t\t\t\t example python3 EC2Helper.py  --type snapshot --action ls\n'
+        '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile>  --type snapshot --action delete --assetIds "snap-1,snap-2" --dryRun True\n'
+        '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile>  --type snapshot --action ls\n'
         '\t\t\t\t\t\t encrypt\n'
         '\t\t\t\t\t\t\t actionParams:\n'
         '\t\t\t\t\t\t\t\t KmsKeyId (OPTIONAL) \n'
         '\t\t\t\t\t\t\t\t\t The kms key to use for encryption, If this parameter is not specified, your KMS key for Amazon EBS is used\n'
-        '\t\t\t\t\t\t\t\t\t\t example python3 EC2Helper.py  --type snapshot --action encrypt --assetIds "snap-1,snap-2" --actionParams "{\\"KmsKeyId\\":\\"id\\"}"\n'
-        '\t\t\t\t 2. SecurityGroup - delete  \n'
-        '\t\t\t\t\t\t example python3 EC2Helper.py  --type security-group --action delete --assetIds "securityGroup1"\n'
+        '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile>  --type snapshot --action encrypt --assetIds "snap-1,snap-2" --actionParams "{\\"KmsKeyId\\":\\"id\\"}"\n'
+        '\t\t\t\t 2. SecurityGroup - '
+        '\t\t\t\t\t delete  \n'
+        '\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile>  --type security-group --action delete --assetIds "securityGroup1"\n'
+        '\t\t\t\t\t clean_unused_sg\n'
+        '\t\t\t\t\t\t\t actionParams:\n'
+        '\t\t\t\t\t\t\t\t statePath - The path to save the last state of the remediated Security Groups \n'
+        '\t\t\t\t\t\t\t\t rollBack - (OPTIONAL) rollBack flag \n'
+        '\t\t\t\t\t\t\t\t sgTorollBack - (OPTIONAL) The id for specific security group that we want to rollback \n'
+        '\t\t\t\t\t\t\t\t only_defaults - (OPTIONAL) Flag to mark to execute only default sg \n'
+        '\t\t\t\t\t\t\t example python3 EC2Helper.py  --type security-group --action clean_unused_sg --actionParams "{\\"statePath\\"":\\"<path to state file>\\"}"\n'
         '\t\t\t\t 3. Vpc - \n'
         '\t\t\t\t\t\t create_flow_log\n'
         '\t\t\t\t\t\t\t actionParams:\n'
@@ -63,7 +71,10 @@ def print_help():
         '\t\t\t\t\t\t\t\t\t The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account. \n'
         '\t\t\t\t\t\t\t\t LogGroupName (OPTIONAL)\n'
         '\t\t\t\t\t\t\t\t\t The name of a new or existing CloudWatch Logs log group where Amazon EC2 publishes your flow logs.\n'
-        '\t\t\t\t\t\t\t\t\t\t example python3 EC2Helper.py  --type vpc --action create_flow_log --assetIds "all" --regions "all"\n'
+        '\t\t\t\t\t\t\t example python3 EC2Helper.py --awsAccessKey <key> --awsSecret <secret> --type vpc --action create_flow_log --regions all\n'
+        '\t\t\t\t\t\t\t --actionParams "{\"DeliverLogsPermissionArn\":\"<the role arn>\"}" --assetIds all\n'
+        '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile> --type vpc --action create_flow_log --regions all\n'
+        '\t\t\t\t\t\t\t --actionParams "{\"DeliverLogsPermissionArn\":\"<the role arn>\"}" --assetIds all\n'
         
 
 
@@ -71,20 +82,16 @@ def print_help():
         '\t\t\t\t The script is based on AWS API and documentation \n'
         '\t\t\t\t https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html\n'
         '\n\n'
-        '\t\t\t Executions Examples:\n'
-        '\t\t\t\t python3 EC2Helper.py --profile <aws_profile> --type <The ec2 service type> --action <The action to execute> --actionParmas <the params for the action> --assetIds <list of assets to work on, comma-separated>\n'
-        '\t\t\t\t python3 EC2Helper.py  --type snapshot --action delete --assetIds "snap-1,snap-2" --dryRun True\n'
-        '\n\n'
         '\t\t\t Parameter Usage:\n'
         '\t\t\t\t logLevel - The logging level (optional). Default = Info\n'
-        '\t\t\t\t profile -  The AWS profile to use to execute this script\n'
-        '\t\t\t\t awsAccessKey -  The AWS access key to use to execute this script\n'
-        '\t\t\t\t awsSecret -  The AWS secret to use to execute this script\n'
+        '\t\t\t\t profile (optional) -  The AWS profile to use to execute this script\n'
+        '\t\t\t\t awsAccessKey (optional) -  The AWS access key to use to execute this script\n'
+        '\t\t\t\t awsSecret (optional) -  The AWS secret to use to execute this script\n'
         '\t\t\t\t region -   The AWS region to use to execute this script\n'
         '\t\t\t\t type -     The AWS EC2 asset type - for example - instance,snapshot,security-group ....\n'
         '\t\t\t\t action -   The EC2 action to execute - (snapshot-delete, sg-delete)\n'
         '\t\t\t\t actionParmas (optional)  - A key value Dictionary of action params. each " should be \\" for exampel {\\"key1\\":\\"val1\\"}\n'
-        '\t\t\t\t assetIds  - List of assets ids (string seperated by commas)"\n'
+        '\t\t\t\t assetIds (optional) - List of assets ids (string seperated by commas)"\n'
         '\n\n'
 
     )
@@ -220,13 +227,14 @@ def do_sg_delete(resource, asset_id, dry_run):
             raise Exception(ce)
 
 
-def do_sg_action(session, dry_run, action, asset_ids):
+def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
     """
        This function is the implementation for security group actions
        :param session: boto3 session
        :param asset_id:
        :param dry_run:
        :param action:
+       :param action_parmas:
        :return:
     """
 
@@ -235,7 +243,13 @@ def do_sg_action(session, dry_run, action, asset_ids):
         for asset_id in asset_ids:
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
             do_sg_delete(resource=resource, asset_id=asset_id, dry_run=dry_run)
-
+    if action == 'clean_unused_sg':
+        from TAWSDefaultSGRemidiation import execute
+        state_path = action_parmas['statePath']
+        is_roll_back = action_parmas['rollBack'] if 'rollBack' in action_parmas else None
+        only_defualts = action_parmas['sgTorollBack'] if 'sgTorollBack' in action_parmas else False
+        sg_to_rb  = action_parmas['sgTorollBack'] if 'sgTorollBack' in action_parmas else None
+        execute(is_rollback=is_roll_back, aws_session=session, region=session.region_name, only_defaults=only_defualts, is_dry_run=dry_run, state_path=state_path, sg_to_rb=sg_to_rb)
 
 def _get_regions(regions_param, session):
     """
@@ -350,11 +364,11 @@ def do_create_flow_log(session, dry_run, asset_id, log_group_name=None, deliver_
         LogDestinationType='cloud-watch-logs')
 
 
-def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas):
+def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=None):
     if asset_type == 'snapshot':
         do_snapshot_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=params)
     if asset_type == 'security-group':
-        do_sg_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids)
+        do_sg_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
     if asset_type == 'vpc':
         do_vpc_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, parmas=params)
 
@@ -370,7 +384,7 @@ if __name__ == '__main__':
     parser.add_argument('--regions', required=False, type=str, default=None)
     parser.add_argument('--awsAccessKey', required=False, type=str, default=None)
     parser.add_argument('--awsSecret', required=False, type=str, default=None)
-    parser.add_argument('--assetIds', required=True, type=str)
+    parser.add_argument('--assetIds', required=False, type=str)
     parser.add_argument('--actionParams', required=False, type=json.loads, default=None)
     parser.add_argument('--dryRun', required=False, type=bool, default=False)
 
@@ -387,7 +401,7 @@ if __name__ == '__main__':
     profile = args.profile
     action = args.action
     asset_ids = args.assetIds
-    asset_ids = asset_ids.split(',')
+    asset_ids = asset_ids.split(',') if asset_ids else None
     params = args.actionParams
     dry_run = args.dryRun
     asset_type = args.type
