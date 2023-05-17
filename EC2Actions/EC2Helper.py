@@ -249,7 +249,7 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
         is_roll_back = action_parmas['rollBack'] if 'rollBack' in action_parmas else None
         only_defualts = action_parmas['sgTorollBack'] if 'sgTorollBack' in action_parmas else False
         sg_to_rb  = action_parmas['sgTorollBack'] if 'sgTorollBack' in action_parmas else None
-        execute(is_rollback=is_roll_back, aws_session=session, region=session.region_name, only_defaults=only_defualts, is_dry_run=dry_run, state_path=state_path, sg_to_rb=sg_to_rb)
+        execute(is_rollback=is_roll_back, aws_session=session, region=session.region_name, only_defaults=only_defualts, is_dry_run=dry_run, state_path=state_path, sg_to_rb=sg_to_rb, asset_ids=asset_ids)
 
 def _get_regions(regions_param, session):
     """
