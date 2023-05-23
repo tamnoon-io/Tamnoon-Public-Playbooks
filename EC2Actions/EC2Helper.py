@@ -228,6 +228,7 @@ def do_sg_delete(resource, asset_id, dry_run):
 
 
 def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
+    from TAWSDefaultSGRemidiation import execute, get_sg_usage
     """
        This function is the implementation for security group actions
        :param session: boto3 session
@@ -244,12 +245,14 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
             do_sg_delete(resource=resource, asset_id=asset_id, dry_run=dry_run)
     if action == 'clean_unused_sg':
-        from TAWSDefaultSGRemidiation import execute
+
         state_path = action_parmas['statePath']
         is_roll_back = action_parmas['rollBack'] if 'rollBack' in action_parmas else None
         only_defualts = action_parmas['sgTorollBack'] if 'sgTorollBack' in action_parmas else False
         sg_to_rb  = action_parmas['sgTorollBack'] if 'sgTorollBack' in action_parmas else None
         execute(is_rollback=is_roll_back, aws_session=session, region=session.region_name, only_defaults=only_defualts, is_dry_run=dry_run, state_path=state_path, sg_to_rb=sg_to_rb, asset_ids=asset_ids)
+    if action == 'get_usage':
+        get_sg_usage(session=session)
 
 def _get_regions(regions_param, session):
     """
@@ -259,12 +262,24 @@ def _get_regions(regions_param, session):
     :return:
     """
     regions_list = list()
+    default_region = 'us-east-1'
+    logging.info(f"Get regions")
     if 'all' in regions_param:
-        ec2_client = session.client('ec2')
-        response = ec2_client.describe_regions(AllRegions=True)
-        for region in response['Regions']:
-            regions_list.append(region['RegionName'])
-        return regions_list
+        try:
+            account_client = session.client('account')
+            response = account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
+            regions_list = [x["RegionName"] for x in response["Regions"]]
+            return regions_list
+            #ec2_client = session.client('ec2')
+            #response = ec2_client.describe_regions(AllRegions=True)
+            #for region in response['Regions']:
+            #    regions_list.append(region['RegionName'])
+
+        except botocore.exceptions.NoRegionError as nr:
+            account_client = session.client('account', region_name=default_region)
+            response = account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
+            regions_list = [x["RegionName"] for x in response["Regions"]]
+            return regions_list
 
     return regions_param.split(",")
 
@@ -307,7 +322,7 @@ def do_vpc_action(session, dry_run, action, asset_ids, parmas=None):
     :return:
     """
     log_group_name = None
-    deliver_logs_permission_arn = None
+
 
     if not parmas or 'DeliverLogsPermissionArn' not in parmas:
         logging.error(f"Can't create a vpc flow log, missing required configuration param - DeliverLogsPermissionArn\n"
@@ -316,6 +331,7 @@ def do_vpc_action(session, dry_run, action, asset_ids, parmas=None):
 
     deliver_logs_permission_arn = parmas['DeliverLogsPermissionArn']
     if action == 'create_flow_log':
+        logging.info(f"Going to execute - VPC  - {action}")
         # check regions
         if len(asset_ids) == 1 and asset_ids[0] == 'all':
             list_of_vpcs = _get_vpcs_in_region(session)
@@ -362,6 +378,8 @@ def do_create_flow_log(session, dry_run, asset_id, log_group_name=None, deliver_
         ResourceType='VPC',
         TrafficType='ALL',
         LogDestinationType='cloud-watch-logs')
+
+    logging.info(f"Enable flow log done for - {asset_id}")
 
 
 def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=None):
