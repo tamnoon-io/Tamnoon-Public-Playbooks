@@ -11,8 +11,6 @@ Preventing cloud lateral movement is of utmost importance as it safeguards the i
     
 [Wiz Blog] - https://www.wiz.io/blog/lateral-movement-risks-in-the-cloud-and-how-to-prevent-them-part-1-the-network-layer
 
-After authentication via AWS API, the script execution will run on the same AWS account of those credentials defined in fallbacks 1-3 (see above)
-
 ### Use cases
 
 #### Bastion Server (Jump Box)
