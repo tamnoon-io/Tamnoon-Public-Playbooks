@@ -2,9 +2,8 @@ import argparse
 import json
 import logging
 import sys
-import boto3
 
-
+from TamnoonPlaybooks.Automations.Utils import utils as utils
 
 
 def log_setup(log_l):
@@ -86,26 +85,7 @@ def print_help():
 
 
 
-def setup_session(profile=None, region=None, aws_access_key=None, aws_secret=None):
-    '''
-    This method setup the boto session to AWS
-    :param profile:  The aws credentials profile as they defined on the machine (~/.aws/credentials)
-    :param region:   The aws target region to execute on
-    :param aws_access_key:
-    :param aws_secret:
-    :return:
-    '''
-    if profile:
-        if region:
-            return boto3.Session(profile_name=profile, region_name=region)
-        return boto3.Session(profile_name=profile)
-    if aws_access_key and aws_secret:
-        if region:
-            return boto3.Session(region_name=region, aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
-        return boto3.Session(aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
-    if region:
-        return boto3.Session(region_name=region)
-    return boto3.Session()
+
 
 def setup_client(session):
     client = session.client('s3')
@@ -245,53 +225,22 @@ def do_block_public_access(block_public_acl, ignore_public_acl, block_public_pol
     )
 
 
+def do_s3_ls(client, bucket_name):
+    pass
 
-if __name__ == '__main__':
 
-    # TODO - Work on desc for params
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--logLevel', required=False, type=str, default="INFO")
-    parser.add_argument('--profile', required=False, default=None)
-    parser.add_argument('--awsAccessKey', required=False, type=str, default=None)
-    parser.add_argument('--awsSecret', required=False, type=str, default=None)
-    parser.add_argument('--action', required=True, type=str)
-    parser.add_argument('--bucketNames', required=True, type=str)
-    parser.add_argument('--actionParmas', required=False, type=str, default=None)
-    parser.add_argument('--revert', required=False, type=bool,  default=None)
-
-    if len(sys.argv) == 1 or '--help' in sys.argv or '-h' in sys.argv:
-        print_help()
-        sys.exit(1)
-
-    print_help()
-    args = parser.parse_args()
-
-    log_setup(args.logLevel)
-
-    result = None
-    profile= args.profile
-    aws_access_key = args.awsAccessKey
-    aws_secret = args.awsSecret
-    action = args.action
-    bucket_names = args.bucketNames
-    list_of_buckets = bucket_names.split(',')
-    params = json.loads(args.actionParmas) if args.actionParmas else None
-    is_revert = args.revert if args.revert else False
-
-    logging.info("Going to setup client")
-    session = setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
-    client = setup_client(session)
-
+def _do_action(list_of_buckets, client, is_revert, action, params):
     for bucket_name in list_of_buckets:
         logging.info(f"Going to work on bucket - {bucket_name}")
         if action == 'server_logging':
             if not params:
                 logging.error(f"Action - server_logging must include action params property")
-                exit (1)
+                exit(1)
             if "target_bucket" not in params:
                 logging.error(f"Action - server_logging must include target_bucket param in the action params property")
                 exit(1)
-            do_logging(client=client, bucket_name=bucket_name, target_bucket_name=params['target_bucket'], is_revert=is_revert)
+            do_logging(client=client, bucket_name=bucket_name, target_bucket_name=params['target_bucket'],
+                       is_revert=is_revert)
 
         if action == "encryption":
             kms_key_id = None
@@ -305,7 +254,7 @@ if __name__ == '__main__':
         if action == "mfa_protection":
             if not params:
                 logging.error(f"Action - mfa_protection must include action params property")
-                exit (1)
+                exit(1)
             if "mfa" not in params:
                 logging.error(f"Action - mfa_protection must include mfa param in the action params property")
                 exit(1)
@@ -323,7 +272,66 @@ if __name__ == '__main__':
                 ignore_public_acl = params['IgnorePublicAcls'] if "IgnorePublicAcls" in params else False
                 block_public_policy = params["BlockPublicPolicy"] if "BlockPublicPolicy" in params else False
                 restrict_public_bucket = params["RestrictPublicBuckets"] if "RestrictPublicBuckets" in params else False
-            do_block_public_access(block_public_acl=block_public_acl, ignore_public_acl=ignore_public_acl, block_public_policy=block_public_policy, restrict_public_bucket=restrict_public_bucket, bucket_name=bucket_name)
+            do_block_public_access(block_public_acl=block_public_acl, ignore_public_acl=ignore_public_acl,
+                                   block_public_policy=block_public_policy,
+                                   restrict_public_bucket=restrict_public_bucket, bucket_name=bucket_name)
+
+        if action == "ls":
+            do_s3_ls(client=client, bucket_name=bucket_name,)
+
+if __name__ == '__main__':
+
+    # TODO - Work on desc for params
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--logLevel', required=False, type=str, default="INFO")
+    parser.add_argument('--profile', required=False, default=None)
+    parser.add_argument('--awsAccessKey', required=False, type=str, default=None)
+    parser.add_argument('--awsSecret', required=False, type=str, default=None)
+    parser.add_argument('--action', required=True, type=str)
+    parser.add_argument('--bucketNames', required=True, type=str)
+    parser.add_argument('--actionParmas', required=False, type=str, default=None)
+    parser.add_argument('--revert', required=False, type=bool,  default=None)
+    parser.add_argument('--regions', required=False, type=str, default=None)
+
+    if len(sys.argv) == 1 or '--help' in sys.argv or '-h' in sys.argv:
+        print_help()
+        sys.exit(1)
+
+    print_help()
+    args = parser.parse_args()
+
+    log_setup(args.logLevel)
+
+    result = None
+    profile= args.profile
+    aws_access_key = args.awsAccessKey
+    aws_secret = args.awsSecret
+    action = args.action
+    regions = args.regions
+    bucket_names = args.bucketNames
+    list_of_buckets = bucket_names.split(',')
+    params = json.loads(args.actionParmas) if args.actionParmas else None
+    is_revert = args.revert if args.revert else False
+
+    if regions:
+        logging.info(f"Going to run over {regions} - region")
+        # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
+        session =  utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
+        list_of_regions = utils.get_regions(regions_param=regions, session=session)
+        for region in list_of_regions:
+            logging.info(f"Working on Region - {region}")
+            session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key, aws_secret=aws_secret)
+            client = setup_client(session)
+            action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert, action=action, parmas=params)
+    else:
+        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
+        logging.info(f"Going to run over the default - {session.region_name} - region")
+        client = setup_client(session)
+        action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert, action=action, parmas=params)
+            
+    
+
+ 
 
 
         
