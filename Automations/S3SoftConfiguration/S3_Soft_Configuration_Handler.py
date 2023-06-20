@@ -3,6 +3,8 @@ import json
 import logging
 import sys
 
+import botocore.exceptions
+
 from TamnoonPlaybooks.Automations.Utils import utils as utils
 
 
@@ -51,7 +53,7 @@ def print_help():
         '\t\t\t\t 4. Bucket Configure public access\n'
         '\t\t\t\t\t\t params (optional) -BlockPublicAcls or IgnorePublicAcls or BlockPublicPolicy or RestrictPublicBuckets - True/False\n'
         '\t\t\t\t\tbased on - https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html#access-control-block-public-access-policy-status\n'
-        
+
         '\n'
         '\t\t\t\t The script is based on AWS API and documentation \n'
         '\t\t\t\t https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html\n'
@@ -67,7 +69,7 @@ def print_help():
         '\t\t\t\t --revert <true/false if to revert this action>\n\n'
         '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action mfa_protection  --bucketNames <The S3 bucket name>\n'
         '\t\t\t\t --actionParmas {"mfa":<The concatenation of the authentication devices serial number, a space, and the value that is displayed on your authentication device>}  --revert <true/false if to revert this action>\n\n'
-        
+
         '\n\n'
         '\t\t\t Parameter Usage:\n'
         '\t\t\t\t logLevel - The logging level (optional). Default = Info\n'
@@ -84,16 +86,12 @@ def print_help():
     print(text)
 
 
-
-
-
 def setup_client(session):
     client = session.client('s3')
     return client
 
 
-
-def do_logging(client, bucket_name, target_bucket_name, is_revert = False):
+def do_logging(client, bucket_name, target_bucket_name, is_revert=False):
     '''
     Implement the set/remove loggin operation over a bucket
     :param client: S3 boto3 client
@@ -109,10 +107,10 @@ def do_logging(client, bucket_name, target_bucket_name, is_revert = False):
     else:
         logging.info(f"Going to set server logging for bucket - {bucket_name}")
         req_element = {
-        'LoggingEnabled': {
-            'TargetBucket': target_bucket_name,
-            'TargetPrefix': f'{bucket_name} - '
-        }
+            'LoggingEnabled': {
+                'TargetBucket': target_bucket_name,
+                'TargetPrefix': f'{bucket_name} - '
+            }
         }
 
     try:
@@ -124,8 +122,7 @@ def do_logging(client, bucket_name, target_bucket_name, is_revert = False):
         logging.error(f"enable logging failed for - {bucket_name}")
 
 
-def do_encryption(client, bucket_name, kms_key_id, is_revert = False):
-
+def do_encryption(client, bucket_name, kms_key_id, is_revert=False):
     if is_revert:
         logging.info(f"Going to remove encryption from bucket - {bucket_name}")
         response = client.delete_bucket_encryption(
@@ -135,13 +132,13 @@ def do_encryption(client, bucket_name, kms_key_id, is_revert = False):
 
     if kms_key_id:
         logging.info(f"Going to encrypt bucket - {bucket_name} using kms key- {kms_key_id}")
-        rule =  {
-                    'ApplyServerSideEncryptionByDefault': {
-                        'SSEAlgorithm': 'aws:kms',
-                        'KMSMasterKeyID': kms_key_id
-                    },
-                    'BucketKeyEnabled': False
-                }
+        rule = {
+            'ApplyServerSideEncryptionByDefault': {
+                'SSEAlgorithm': 'aws:kms',
+                'KMSMasterKeyID': kms_key_id
+            },
+            'BucketKeyEnabled': False
+        }
     else:
         logging.info(f"Going to encrypt bucket - {bucket_name} using aws:s3 key")
         rule = {
@@ -160,13 +157,12 @@ def do_encryption(client, bucket_name, kms_key_id, is_revert = False):
 
 
 def do_versioning(client, bucket_name, is_revert=False):
-
     if is_revert:
         logging.info(f"Going to remove versioning  from bucket - {bucket_name}")
         response = client.put_bucket_versioning(
             Bucket=bucket_name,
             VersioningConfiguration={
-                'Status':  'Suspended'
+                'Status': 'Suspended'
             }
         )
     else:
@@ -181,20 +177,18 @@ def do_versioning(client, bucket_name, is_revert=False):
 
 
 def do_mfa_protection(client, bucket_name, mfa):
-
-    #get the bucket versioning status
+    # get the bucket versioning status
     response = client.get_bucket_versioning(
         Bucket=bucket_name
     )
     versioning_status = response['Status']
-
 
     if is_revert:
         logging.info(f"Going to remove mfa deletion protection from bucket - {bucket_name}")
         response = client.put_bucket_versioning(
             Bucket=bucket_name,
             VersioningConfiguration={
-                'MFADelete':  'Disabled',
+                'MFADelete': 'Disabled',
                 'Status': versioning_status
 
             }
@@ -227,6 +221,57 @@ def do_block_public_access(block_public_acl, ignore_public_acl, block_public_pol
 
 def do_s3_ls(client, bucket_name):
     pass
+
+
+def _check_statment_exist(statement, curr_policy):
+    for sts in curr_policy['Statement']:
+        if sts['Effect'] == statement['Effect'] and sts['Principal'] == statement['Principal'] and sts['Action'] == statement['Action'] and sts['Condition'] == statement['Condition'] and sorted(sts['Resource']) == sorted(statement['Resource']):
+                return True
+    return False
+
+
+def do_block_http(client, bucket_name):
+    logging.info(f"Going to block http access to bucket - {bucket_name}")
+    statement = {
+        "Sid": "RestrictToTLSRequestsOnly",
+        "Effect": "Deny",
+        "Principal": "*",
+        "Action": "s3:*",
+        "Resource": [
+            f"arn:aws:s3:::{bucket_name}",
+            f"arn:aws:s3:::{bucket_name}/*"
+        ],
+        "Condition": {
+            "Bool": {
+                "aws:SecureTransport": "false"
+            }
+        }
+    }
+
+    policy = {
+        "Version": "2012-10-17",
+        "Statement": [statement]
+    }
+    try:
+        response = client.get_bucket_policy(Bucket=bucket_name)
+        curr_policy = json.loads(response['Policy'])
+        if not _check_statment_exist(statement, curr_policy):
+            curr_policy['Statement'].append(statement)
+            response = client.put_bucket_policy(
+                Bucket=bucket_name,
+                Policy=json.dumps(curr_policy)
+            )
+        else:
+            logging.info(f"HTTP Deny policy already exist")
+            return
+    except botocore.exceptions.ClientError as e:
+        if 'Error' in e.response and 'Code' in  e.response['Error'] and e.response['Error']['Code'] == 'NoSuchBucketPolicy':
+            response = client.put_bucket_policy(
+                Bucket=bucket_name,
+                Policy=json.dumps(policy)
+            )
+
+    logging.info(f"Bucket policy created/updated with http deny policy")
 
 
 def _do_action(list_of_buckets, client, is_revert, action, params):
@@ -277,7 +322,11 @@ def _do_action(list_of_buckets, client, is_revert, action, params):
                                    restrict_public_bucket=restrict_public_bucket, bucket_name=bucket_name)
 
         if action == "ls":
-            do_s3_ls(client=client, bucket_name=bucket_name,)
+            do_s3_ls(client=client, bucket_name=bucket_name)
+
+        if action == "block_http":
+            do_block_http(client=client, bucket_name=bucket_name)
+
 
 if __name__ == '__main__':
 
@@ -290,7 +339,7 @@ if __name__ == '__main__':
     parser.add_argument('--action', required=True, type=str)
     parser.add_argument('--bucketNames', required=True, type=str)
     parser.add_argument('--actionParmas', required=False, type=str, default=None)
-    parser.add_argument('--revert', required=False, type=bool,  default=None)
+    parser.add_argument('--revert', required=False, type=bool, default=None)
     parser.add_argument('--regions', required=False, type=str, default=None)
 
     if len(sys.argv) == 1 or '--help' in sys.argv or '-h' in sys.argv:
@@ -303,7 +352,7 @@ if __name__ == '__main__':
     log_setup(args.logLevel)
 
     result = None
-    profile= args.profile
+    profile = args.profile
     aws_access_key = args.awsAccessKey
     aws_secret = args.awsSecret
     action = args.action
@@ -316,31 +365,18 @@ if __name__ == '__main__':
     if regions:
         logging.info(f"Going to run over {regions} - region")
         # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
-        session =  utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
+        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
         list_of_regions = utils.get_regions(regions_param=regions, session=session)
         for region in list_of_regions:
             logging.info(f"Working on Region - {region}")
-            session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key, aws_secret=aws_secret)
+            session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
+                                          aws_secret=aws_secret)
             client = setup_client(session)
-            action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert, action=action, parmas=params)
+            action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert,
+                                       action=action, params=params)
     else:
         session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
         logging.info(f"Going to run over the default - {session.region_name} - region")
         client = setup_client(session)
-        action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert, action=action, parmas=params)
-            
-    
-
- 
-
-
-        
-        
-
-
-
-
-
-
-
-
+        action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert, action=action,
+                                   params=params)
