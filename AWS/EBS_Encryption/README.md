@@ -1,5 +1,5 @@
 
-<img src="../images/icons/Tamnoon.png" width="200"/>
+<img src="../../images/icons/Tamnoon.png" width="200"/>
 
 # Tamnoon Automatically unencrypted EBS Volumes remediation using KMS keys.
 
@@ -21,7 +21,7 @@ Playbook steps:
 3. Add SCP Deny policy for creation instance with unencrypted EBS.
 
 
-![EBS architecture diagram](../images/TamnoonEBSEncryptionDiagrams.png)
+![EBS architecture diagram](../../images/TamnoonEBSEncryptionDiagrams.png)
 
 ## Prerequisites 
 A workstation with both AWS CLI and jq installed (https://stedolan.github.io/jq/download/).

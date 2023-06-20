@@ -198,13 +198,16 @@ def do_snapshot_action(session, dry_run, action, asset_ids, action_parmas=None):
         for asset_id in asset_ids:
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
             do_snapshot_delete(resource=resource, asset_id=asset_id, dry_run=dry_run)
+        return {}
     if action == 'ls':
         do_snapshot_ls(session=session)
+        return {}
     if action == 'encrypt':
         kms_key_id = action_parmas['kmsKeyId'] if action_parmas and 'kmsKeyId' in action_parmas else None
         for asset_id in asset_ids:
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
             do_snapshot_encrypt(session=session, asset_id=asset_id, dry_run=dry_run, kms_key_id=kms_key_id)
+        return {}
 
 
 def do_sg_delete(resource, asset_id, dry_run):
@@ -244,15 +247,22 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
         for asset_id in asset_ids:
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
             do_sg_delete(resource=resource, asset_id=asset_id, dry_run=dry_run)
+        return {}
     if action == 'clean_unused_sg':
-
         state_path = action_parmas['statePath']
         is_roll_back = action_parmas['rollBack'] if 'rollBack' in action_parmas else None
         only_defualts = action_parmas['sgTorollBack'] if 'sgTorollBack' in action_parmas else False
         sg_to_rb  = action_parmas['sgTorollBack'] if 'sgTorollBack' in action_parmas else None
         execute(is_rollback=is_roll_back, aws_session=session, region=session.region_name, only_defaults=only_defualts, is_dry_run=dry_run, state_path=state_path, sg_to_rb=sg_to_rb, asset_ids=asset_ids)
+        return {}
     if action == 'get_usage':
-        get_sg_usage(session=session)
+        investigation_result = dict()
+        sg_to_lambda, sg_to_nic = get_sg_usage(session=session, asset_ids=asset_ids)
+        if len(sg_to_lambda) > 0:
+            investigation_result['lambda'] = sg_to_lambda
+        if len(sg_to_nic) > 0:
+            investigation_result['nic'] = sg_to_nic
+        return investigation_result
 
 def _get_regions(regions_param, session):
     """
@@ -269,6 +279,7 @@ def _get_regions(regions_param, session):
             account_client = session.client('account')
             response = account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
             regions_list = [x["RegionName"] for x in response["Regions"]]
+            logging.info(f"Got {len(regions_list)} regions")
             return regions_list
             #ec2_client = session.client('ec2')
             #response = ec2_client.describe_regions(AllRegions=True)
@@ -276,6 +287,7 @@ def _get_regions(regions_param, session):
             #    regions_list.append(region['RegionName'])
 
         except botocore.exceptions.NoRegionError as nr:
+            logging.warning(f"falling back to default region - {default_region}")
             account_client = session.client('account', region_name=default_region)
             response = account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
             regions_list = [x["RegionName"] for x in response["Regions"]]
@@ -327,7 +339,8 @@ def do_vpc_action(session, dry_run, action, asset_ids, parmas=None):
     if not parmas or 'DeliverLogsPermissionArn' not in parmas:
         logging.error(f"Can't create a vpc flow log, missing required configuration param - DeliverLogsPermissionArn\n"
                       f"The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account.")
-        return -1
+        return {'error':f"Can't create a vpc flow log, missing required configuration param - DeliverLogsPermissionArn\n"
+                      f"The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account." }
 
     deliver_logs_permission_arn = parmas['DeliverLogsPermissionArn']
     if action == 'create_flow_log':
@@ -353,6 +366,7 @@ def do_vpc_action(session, dry_run, action, asset_ids, parmas=None):
                 logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
                 do_create_flow_log(session=session, asset_id=asset_id, dry_run=dry_run, log_group_name=log_group_name,
                                    deliver_logs_permission_arn=deliver_logs_permission_arn)
+        return {}
 
 
 def do_create_flow_log(session, dry_run, asset_id, log_group_name=None, deliver_logs_permission_arn=None):
@@ -384,11 +398,11 @@ def do_create_flow_log(session, dry_run, asset_id, log_group_name=None, deliver_
 
 def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=None):
     if asset_type == 'snapshot':
-        do_snapshot_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=params)
+        return do_snapshot_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=params)
     if asset_type == 'security-group':
-        do_sg_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
+        return do_sg_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
     if asset_type == 'vpc':
-        do_vpc_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, parmas=params)
+        return do_vpc_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, parmas=params)
 
 
 if __name__ == '__main__':
@@ -427,16 +441,25 @@ if __name__ == '__main__':
     aws_access_key = args.awsAccessKey
     aws_secret = args.awsSecret
 
-    logging.info("Going to setup resource")
 
+    result = dict()
     if regions:
+        logging.info(f"Going to run over {regions} - region")
         # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
         session = setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
         list_of_regions = _get_regions(regions_param=regions, session=session)
         for region in list_of_regions:
+            logging.info(f"Working on Region - {region}")
             session = setup_session(profile=profile, region=region, aws_access_key=aws_access_key, aws_secret=aws_secret)
-            _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=params)
+            action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=params)
+            if len(action_result) > 0:
+                result[region] = action_result
     else:
         session = setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
-        _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
+        logging.info(f"Going to run over the default - {session.region_name} - region")
+        action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
                    action_parmas=params)
+        if len(action_result) > 0:
+            result[session.region_name] = action_result
+
+    print(result)

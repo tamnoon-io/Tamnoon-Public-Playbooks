@@ -1,5 +1,5 @@
 
-<img src="../images/icons/Tamnoon.png" width="200"/>
+<img src="../../images/icons/Tamnoon.png" width="200"/>
 
 # Tamnoon Playbook: Recommended remediation for lack of MFA
 The playbook can remediate - Root users, Iam users, or both 

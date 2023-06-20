@@ -215,32 +215,33 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
                         _execute_rollback(aws_session, region, sg_definition, sg_to_rb)
 
 
-def get_sg_usage(session):
+def get_sg_usage(session, asset_ids=None):
     region_client = session.client('ec2')
-    nic_to_sg = dict()
+    #nic_to_sg = dict()
     sg_to_nic = dict()
     response_nics = region_client.describe_network_interfaces()
     # check nics
     for nic in response_nics['NetworkInterfaces']:
-        nic_to_sg[nic['NetworkInterfaceId']] = list()
+        #nic_to_sg[nic['NetworkInterfaceId']] = list()
         for group in nic['Groups']:
-            if group['GroupId'] not in sg_to_nic:
-                sg_to_nic[group['GroupId']] = list()
-            sg_to_nic[group['GroupId']].append(nic['NetworkInterfaceId'])
-            nic_to_sg[nic['NetworkInterfaceId']].append(group['GroupId'])
+            if (asset_ids and group['GroupId'] in asset_ids) or not asset_ids:
+                if group['GroupId'] not in sg_to_nic:
+                    sg_to_nic[group['GroupId']] = list()
+                sg_to_nic[group['GroupId']].append({'id':nic['NetworkInterfaceId'], 'ip':nic['PrivateIpAddress']})
+                #nic_to_sg[nic['NetworkInterfaceId']].append(group['GroupId'])
     # get all the lambdas to see which on enis attached to that sg
-    lambda_to_sg = dict()
+    #lambda_to_sg = dict()
     sg_to_lambda = dict()
     region_client = session.client('lambda')
     response_lambda = region_client.list_functions()
     # check also lambdas
     for lambda_asset in response_lambda['Functions']:
         if 'VpcConfig' in lambda_asset and 'SecurityGroupIds' in lambda_asset['VpcConfig']:
-            lambda_to_sg[lambda_asset['FunctionName']] = list()
+            #lambda_to_sg[lambda_asset['FunctionName']] = list()
             for group in lambda_asset['VpcConfig']['SecurityGroupIds']:
-                if group in sg_to_lambda:
+                if (asset_ids and group in asset_ids) or not asset_ids:
                     if group not in sg_to_lambda:
                         sg_to_lambda[group] = list()
                     sg_to_lambda[group].append(lambda_asset['FunctionName'])
-                lambda_to_sg[lambda_asset['FunctionName']].append(group)
+                    #lambda_to_sg[lambda_asset['FunctionName']].append(group)
     return sg_to_lambda, sg_to_nic
