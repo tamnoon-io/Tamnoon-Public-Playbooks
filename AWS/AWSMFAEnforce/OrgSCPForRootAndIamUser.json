@@ -2,7 +2,7 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "DenyAllExceptListedIfNoMFA",
+      "Sid": "DenyAllExceptListedIfNoMFAroot",
       "Effect": "Deny",
       "NotAction": [
         "iam:CreateVirtualMFADevice",
@@ -27,13 +27,14 @@
       }
     },
       {
-      "Sid": "DenyAllExceptListedIfNoMFA",
+      "Sid": "DenyAllExceptListedIfNoMFAusers",
       "Effect": "Deny",
       "NotAction": [
         "iam:CreateVirtualMFADevice",
         "iam:ChangePassword",
         "iam:EnableMFADevice",
         "iam:GetUser",
+        "iam:ListUsers",
         "iam:ListMFADevices",
         "iam:ListVirtualMFADevices",
         "iam:ResyncMFADevice",

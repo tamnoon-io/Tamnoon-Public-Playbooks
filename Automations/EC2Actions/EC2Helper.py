@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import sys
+import os
 import boto3
 import botocore.exceptions
 
@@ -75,6 +76,22 @@ def print_help():
         '\t\t\t\t\t\t\t --actionParams "{\"DeliverLogsPermissionArn\":\"<the role arn>\"}" --assetIds all\n'
         '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile> --type vpc --action create_flow_log --regions all\n'
         '\t\t\t\t\t\t\t --actionParams "{\"DeliverLogsPermissionArn\":\"<the role arn>\"}" --assetIds all\n'
+        '\t\t\t\t 4. EC2 - \n'
+        '\t\t\t\t\t\t enforce_imdsv2\n'
+        '\t\t\t\t\t\t\t actionParams:\n'
+        '\t\t\t\t\t\t\t\t HttpPutResponseHopLimit (OPTIONAL)\n'
+        '\t\t\t\t\t\t\t\t\t The desired HTTP PUT response hop limit for instance metadata requests.\n'
+        '\t\t\t\t\t\t\t\t\t The larger the number, the further instance metadata requests can travel.\n'
+        '\t\t\t\t\t\t\t\t\t If no parameter is specified, the existing state is maintained.\n'
+        '\t\t\t\t\t\t\t\t\t The value is number >=1.\n'
+        '\t\t\t\t\t\t\t\t revert (OPTIONAL)\n'
+        '\t\t\t\t\t\t\t\t\t A flag to decide if to rollback to IMDSv1 - value is true \n'
+        '\t\t\t\t\t\t\t\t statePath (OPTIONAL)\n'
+        '\t\t\t\t\t\t\t\t\t the path for the state json file\n'
+        '\t\t\t\t\t\t\t example python3 EC2Helper.py --awsAccessKey <key> --awsSecret <secret> --type ec2 --action enforce_imdsv2 --assetIds <The ec2 instance ids>\n'
+        '\t\t\t\t\t\t\t --actionParams "{\"HttpPutResponseHopLimit\":\"<# of http redirect hoped allowed>\"}" \n'
+        '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile> --type ec2 --action enforce_imdsv2 \n'
+        '\t\t\t\t\t\t\t --actionParams "{\"DeliverLogsPermissionArn\":\"<the role arn>\"}" --assetIds <The ec2 instance ids>\n'
         
 
 
@@ -87,7 +104,7 @@ def print_help():
         '\t\t\t\t profile (optional) -  The AWS profile to use to execute this script\n'
         '\t\t\t\t awsAccessKey (optional) -  The AWS access key to use to execute this script\n'
         '\t\t\t\t awsSecret (optional) -  The AWS secret to use to execute this script\n'
-        '\t\t\t\t region -   The AWS region to use to execute this script\n'
+        '\t\t\t\t regions (optional) -   The AWS regions to use to execute this script (specific region, list of regions, or All)\n'
         '\t\t\t\t type -     The AWS EC2 asset type - for example - instance,snapshot,security-group ....\n'
         '\t\t\t\t action -   The EC2 action to execute - (snapshot-delete, sg-delete)\n'
         '\t\t\t\t actionParmas (optional)  - A key value Dictionary of action params. each " should be \\" for exampel {\\"key1\\":\\"val1\\"}\n'
@@ -325,7 +342,7 @@ def _get_vpcs_in_region(session):
 
 def do_vpc_action(session, dry_run, action, asset_ids, parmas=None):
     """
-    This i the function that handle the vpc actions
+    This is the function that handle the vpc actions
     :param session: The boto3 session
     :param dry_run:
     :param action: The action to execute
@@ -336,14 +353,18 @@ def do_vpc_action(session, dry_run, action, asset_ids, parmas=None):
     log_group_name = None
 
 
-    if not parmas or 'DeliverLogsPermissionArn' not in parmas:
-        logging.error(f"Can't create a vpc flow log, missing required configuration param - DeliverLogsPermissionArn\n"
-                      f"The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account.")
-        return {'error':f"Can't create a vpc flow log, missing required configuration param - DeliverLogsPermissionArn\n"
-                      f"The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account." }
+
 
     deliver_logs_permission_arn = parmas['DeliverLogsPermissionArn']
     if action == 'create_flow_log':
+        if not parmas or 'DeliverLogsPermissionArn' not in parmas:
+            logging.error(
+                f"Can't create a vpc flow log, missing required configuration param - DeliverLogsPermissionArn\n"
+                f"The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account.")
+            return {
+                'error': f"Can't create a vpc flow log, missing required configuration param - DeliverLogsPermissionArn\n"
+                         f"The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account."}
+
         logging.info(f"Going to execute - VPC  - {action}")
         # check regions
         if len(asset_ids) == 1 and asset_ids[0] == 'all':
@@ -396,6 +417,107 @@ def do_create_flow_log(session, dry_run, asset_id, log_group_name=None, deliver_
     logging.info(f"Enable flow log done for - {asset_id}")
 
 
+def do_imdsv2_action(client, asset_id, dry_run, http_hope, roll_back, state_path):
+    '''
+    This function execute the IMDS versioning configuration for ec2 asset
+    :param client:
+    :param asset_id:
+    :param dry_run:
+    :param http_hope:
+    :param roll_back:
+    :param state_path:
+    :return:
+    '''
+
+    try:
+        if roll_back:
+            if not state_path:
+                logging.error(f"Can't rollback without having the previous state, no json file for state was delivered to the script")
+            else:
+                with open(state_path, "r") as state_file:
+                    state = json.load(state_file)
+                    if asset_id in state:
+                        instance = state[asset_id]
+                        http_token = instance['HttpTokens']
+                        hope = instance['HttpPutResponseHopLimit']
+                        response = client.modify_instance_metadata_options(
+                            InstanceId=asset_id,
+                            HttpTokens='required',
+                            HttpPutResponseHopLimit=http_hope,
+                            DryRun=dry_run
+                        )
+        else:
+            # get teh current state of the asset and save it to the state file
+            response = client.describe_instances(InstanceIds=[asset_id])
+            metadata_options = response['Reservations'][0]['Instances'][0]['MetadataOptions']
+            if os.path.exists(state_path):
+                with open(state_path, "r") as state_file:
+                    try:
+                        state = json.load(state_file)
+                    except json.JSONDecodeError:
+                        state = dict()
+
+
+            else:
+                state = dict()
+
+
+            state[asset_id] = {
+                "HttpTokens":metadata_options['HttpTokens'],
+                "HttpPutResponseHopLimit":metadata_options['HttpPutResponseHopLimit']
+            }
+            json.dump(state,open(state_path, "w"))
+
+            # in case http hope limit provided
+            if http_hope>0:
+                response = client.modify_instance_metadata_options(
+                    InstanceId=asset_id,
+                    HttpTokens='required',
+                    HttpPutResponseHopLimit=http_hope,
+                    DryRun=dry_run
+                )
+            # in case no http hope limit provided use the current state
+            else:
+                response = client.modify_instance_metadata_options(
+                    InstanceId=asset_id,
+                    HttpTokens='required',
+                    DryRun=dry_run
+                )
+
+    except botocore.exceptions.ClientError as ce:
+        if ce.response['Error']['Code'] == 'DryRunOperation':
+            logging.warning(f"Dry run execution!!! nothing changed")
+
+    except Exception as e:
+        logging.error(f"Something went wrong with EC2 API !!")
+        raise e
+
+
+
+
+def do_ec2_action(session, dry_run, action, asset_ids, parmas):
+    """
+    This is the Ec2 helper function to execute boto3 api call for ec2 configration
+    :param session:
+    :param dry_run:
+    :param action:
+    :param asset_ids:
+    :param parmas:
+    :return:
+    """
+
+    if action == 'enforce_imdsv2':
+        client = session.client('ec2')
+        for asset_id in asset_ids:
+            logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
+            http_hope = parmas['HttpPutResponseHopLimit'] if  params and 'HttpPutResponseHopLimit' in parmas else -1
+            roll_back = parmas['revert'] if params and 'revert' in params else False
+            state_path = params['statePath'] if params and 'statePath' in parmas else None
+            do_imdsv2_action(client=client, asset_id=asset_id, dry_run=dry_run, http_hope=http_hope, roll_back=roll_back, state_path=state_path)
+        return {}
+
+    return {'error':'no action found'}
+
 def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=None):
     if asset_type == 'snapshot':
         return do_snapshot_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=params)
@@ -403,6 +525,9 @@ def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=No
         return do_sg_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
     if asset_type == 'vpc':
         return do_vpc_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, parmas=params)
+    if asset_type == 'ec2':
+        return do_ec2_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, parmas=params)
+
 
 
 if __name__ == '__main__':
@@ -462,4 +587,4 @@ if __name__ == '__main__':
         if len(action_result) > 0:
             result[session.region_name] = action_result
 
-    print(result)
+
