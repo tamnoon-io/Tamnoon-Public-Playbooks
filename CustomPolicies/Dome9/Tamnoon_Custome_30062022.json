@@ -1,5 +1,16 @@
 [
   {
+    "name": "Ensure IAM users have either access key or console password enabled",
+    "description": "Ensuring IAM users are using either access key or console password reduces the security risk of mismanaged access controls.",
+    "severity": "Low",
+    "logic": "IamUser where name unlike '%root%' should not have passwordEnabled=false and firstAccessKey.isActive=false and secondAccessKey.isActive=false",
+    "remediation": "\n**From Portal**\n1. Go to 'IAM'\n2. In the menu, under 'Access management', choose 'Users' and choose the relevant user\n3. Choose the 'Security credentials' tab\n4. If access keys are used, make sure 'Console password' is disabled under 'Sign-in credentials'\n5. If 'Console password' is used, make sure to disable any access keys under 'Access keys'\n\n**From TF**\nTo disable an IAM user access key, set 'status' to 'Inactive':\n```\nresource \"aws_iam_access_key\" \"example_access_key\" {\n..\nuser   = \"USER-NAME\"\nstatus = \"Inactive\"\n..\n}\n```\nTo delete an IAM user login profile (password), delete the following resource:\n```\nresource \"aws_iam_user_login_profile\" \"example_user_login_profile\" {\n..\n}\n```\n\n**From Command Line**\nTo list IAM access keys for a given user, run:\n```\naws iam list-access-keys --user-name USER-NAME\n```\nTo disable IAM user access key, run:\n```\naws iam update-access-key --user-name USER-NAME --access-key-id ACCESS_KEY_ID --status Inactive\n```\nTo determine whether an IAM user has a password, run:\n```\naws iam get-login-profile --user-name USER-NAME\n```\nTo delete an IAM user login profile (password), run:\n```\naws iam delete-login-profile --user-name USER-NAME\n```\n\n**References**\n1. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html\n2. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_passwords_admin-change-user.html\n3. https://awscli.amazonaws.com/v2/documentation/api/latest/reference/iam/list-access-keys.html\n4. https://awscli.amazonaws.com/v2/documentation/api/latest/reference/iam/update-access-key.html\n5. https://awscli.amazonaws.com/v2/documentation/api/latest/reference/iam/get-login-profile.html\n6. https://awscli.amazonaws.com/v2/documentation/api/latest/reference/iam/delete-login-profile.html\n7. https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_access_key#status\n8. https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_user_login_profile\n",
+    "complianceTag": "Identity and Access Management|TM.AWS.IAM.65",
+    "logicHash": "7Ay4iZM2n4GX2fp0VcxJew",
+    "ruleId": "D9.AWS.IAM.65",
+    "category": ""
+  },
+  {
     "name": "ALB potentially exposed to the public internet",
     "description": "Services and databases store data that may be sensitive, protected by law, subject to regulatory requirements or compliance standards. It is highly recommended that access to data will be restricted. This rule detects network settings that may expose data over the public internet",
     "severity": "Critical",
