@@ -7,7 +7,7 @@ from botocore import exceptions
 
 boto3.set_stream_logger('boto3', logging.ERROR)
 
-import sys
+import os
 
 
 
@@ -22,31 +22,6 @@ def _load_from_file(result_file):
         return json.load(result_json)
 
 
-def _remove_unused_sg_rules(sg, ec2_resource, is_dry_run, dry_run_result, output_result):
-    sg_id = sg['GroupId']
-    security_group = ec2_resource.SecurityGroup(sg['GroupId'])
-    if len(sg['IpPermissions']) == 0:
-        output_result[sg_id]["result"] = "Skip"
-        output_result[sg_id]["reason"] = f"No ingress rules to remove for {sg['GroupId']}"
-
-    else:
-        if is_dry_run:
-            output_result[sg_id]["result"] = "DryRun"
-            dry_run_result.add(sg['GroupId'])
-        else:
-            security_group.revoke_ingress(IpPermissions=sg['IpPermissions'])
-            output_result[sg_id]["result"] = "Executed"
-
-    if len(sg['IpPermissionsEgress']) == 0:
-        output_result[sg_id]["result"] = "Skip"
-        output_result[sg_id]["reason"] = f"No egress rules to remove for {sg['GroupId']}"
-    else:
-        if is_dry_run:
-            output_result[sg_id]["result"] = "DryRun"
-            dry_run_result.add(sg['GroupId'])
-        else:
-            security_group.revoke_egress(IpPermissions=sg['IpPermissionsEgress'])
-            output_result[sg_id]["result"] = "Executed"
 
 
 def _auth_ingress(permissions, sg_id, region_ec2_resource):
@@ -80,9 +55,87 @@ def _execute_rollback(region_session, region, sg_definition, sg_id=None):
         if 'Egress' in permissions:
             _auth_egress(permissions['Egress'], sg_id, region_ec2_resource)
 
+def _remove_unused_sg_rules(sg, ec2_resource, is_dry_run, dry_run_result, output_result):
+    sg_id = sg['GroupId']
+    security_group = ec2_resource.SecurityGroup(sg['GroupId'])
+    if len(sg['IpPermissions']) == 0:
+        output_result[sg_id]["result"] = "Skip"
+        output_result[sg_id]["reason"] = f"No ingress rules to remove for {sg['GroupId']}"
+
+    else:
+        if is_dry_run:
+            output_result[sg_id]["result"] = "DryRun"
+            dry_run_result.add(sg['GroupId'])
+        else:
+            security_group.revoke_ingress(IpPermissions=sg['IpPermissions'])
+            output_result[sg_id]["result"] = "Executed"
+
+    if len(sg['IpPermissionsEgress']) == 0:
+        output_result[sg_id]["result"] = "Skip"
+        output_result[sg_id]["reason"] = f"No egress rules to remove for {sg['GroupId']}"
+    else:
+        if is_dry_run:
+            output_result[sg_id]["result"] = "DryRun"
+            dry_run_result.add(sg['GroupId'])
+        else:
+            security_group.revoke_egress(IpPermissions=sg['IpPermissionsEgress'])
+            output_result[sg_id]["result"] = "Executed"
+
+    # tag to remove
+    if security_group.group_name != 'default':
+        if not is_dry_run:
+            tamnoon_remove_tag = {
+                'Key': 'Tamnoon-Tag',
+                'Value': 'SecurityGroup-To-Remove'
+            }
+            curr_tags = security_group.tags if security_group.tags else []
+            curr_tags.append(tamnoon_remove_tag)
+            tag = security_group.create_tags(Tags=curr_tags)
 
 
-def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_path, sg_to_rb, asset_ids = None):
+def _delete_unused_sg_rules(sg, region_ec2_resource, is_dry_run, dry_run_result, output_result, tag_deletion):
+    '''
+    This method will delete security group - if tag_deletion provided it will delete only security group that have this tag
+
+    :param sg:
+    :param region_ec2_resource:
+    :param is_dry_run:
+    :param dry_run_result:
+    :param output_result:
+    :param tag_deletion:
+    :return:
+    '''
+    sg_id = sg['GroupId']
+    security_group = region_ec2_resource.SecurityGroup(sg['GroupId'])
+    sg_tags = security_group.tags
+    go_delete = False
+    if tag_deletion:
+        for tag in sg_tags:
+            if tag['Key'] == 'Tamnoon-Tag' and tag['Value'] == 'SecurityGroup-To-Remove':
+                go_delete = True
+    else:
+        go_delete = True
+
+    if len(sg['IpPermissions']) > 0:
+        if tag_deletion:
+            output_result[sg_id]["result"] = "Skip"
+            output_result[sg_id]["reason"] = f"Tamnoon marked it to delete but new inbound rules created for -  {sg['GroupId']}"
+            go_delete = False
+        else:
+            go_delete = True
+
+    if go_delete:
+        if is_dry_run:
+            output_result[sg_id]["result"] = "DryRun"
+            dry_run_result.add(sg['GroupId'])
+        else:
+            response = security_group.delete(GroupName=sg['GroupId'])
+            output_result[sg_id]["result"] = "Deleted"
+
+
+
+
+def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_path, sg_to_rb, asset_ids = None, action_type='Clean', tag_deletion=None):
     '''
 
     :param is_rollback: A flag to sign if this is a rollback or not
@@ -102,7 +155,13 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
     else:
         logging.info(f"Start execute security group rules removal")
 
-    state_dict = dict()
+    if os.path.exists(state_path):
+        with open(state_path, "r") as state_file:
+            try:
+                state_dict = json.load(state_file)
+            except json.JSONDecodeError:
+                state_dict = dict()
+
 
     if not is_rollback:
 
@@ -119,7 +178,7 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
             # describe all the sg in the region
             res_desc_sg = region_client.describe_security_groups()
 
-            # get all the nics in teh region to check attachment of default sg
+            # get all the nics in the region to check attachment of default sg
             sg_to_lambda, sg_to_nic = get_sg_usage(session)
 
             for sg in res_desc_sg['SecurityGroups']:
@@ -138,16 +197,17 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
                 if only_defaults:
                     if sg_name != 'default': continue
 
-
                 sg_attached_to_nic = sg_id in sg_to_nic and len(sg_to_nic[sg_id])>0
                 sg_attached_to_lambda = sg_id in sg_to_lambda and len(sg_to_lambda[sg_id])>0
 
                 if sg_attached_to_nic:
+                    attached_nics = [nic['id'] for nic in  sg_to_nic[sg_id]]
                     output_result[sg_name]["result"] = "Skip"
                     output_result[sg_name]["reason"] = f"security group name - {sg['GroupName']}, id - {sg['GroupId']} is attached to some Network Interface in region - {region} going to skip it"
                     output_result[sg_name]["attachments"] = f"Attached Network Interfaces  - {','.join(attached_nics)}"
 
                 if sg_attached_to_lambda:
+                    attached_lambdas = [l for l in sg_to_lambda[sg_id]]
                     output_result[sg_name]["result"] = "Skip"
                     output_result[sg_name]["reason"] = f"security group name - {sg['GroupName']}, id - {sg['GroupId']} is attached to some lambdas in region - {region} going to skip it"
                     output_result[sg_name]["attachments"] = f"Attached AWS Lambdas - {','.join(attached_lambdas)}"
@@ -161,7 +221,12 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
                     state_dict[region][sg_id]['Ingress'] = sg_ip_permissions
                     state_dict[region][sg_id]['Egress'] = sg_ip_permissions_egress
 
-                    _remove_unused_sg_rules(sg, region_ec2_resource, is_dry_run, dry_run_result[region], output_result)
+                    if action_type == 'Clean':
+                        _remove_unused_sg_rules(sg, region_ec2_resource, is_dry_run, dry_run_result[region], output_result)
+                    if action_type == 'Remove' and sg['GroupName'] != 'default':
+                        _delete_unused_sg_rules(sg, region_ec2_resource, is_dry_run, dry_run_result[region],
+                                                output_result, tag_deletion)
+
 
             logging.info("####################### Status #######################")
             json_formatted_str = json.dumps(output_result, indent=2)
