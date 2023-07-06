@@ -1,5 +1,5 @@
 
-<img src="../../images/icons/Tamnoon.png" width="200"/>
+<img src="../../../images/icons/Tamnoon.png" width="200"/>
 
 # Tamnoon Playbook: automatically remediate soft configurations for S3 Bucket.
 

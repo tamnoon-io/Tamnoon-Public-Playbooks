@@ -14,15 +14,8 @@ The execution is based on AWS credentials configuration based on the next fallba
 After authentication via AWS API, the script execution will run on the same AWS account of those credentials defined in fallbacks 1-3 (see above)
 
 ## Playbook steps:
-1. Check Impact:
-   1. Query the CloudWatch metric MetadataNoToken.
-      1. Under CloudWatch, open All metrics
-      2. Chose EC2
-      3. Then choose “Per-Instance Metrics”
-      4. Change the timeframe to be 2W
-      4. All Instances that this metric is 0 for them can be remediated using this playbook, The rest need further investigation
-2. Clone the folder Automation/EC2Helper 
-3. How to execute the automation:
+1. Clone the folder Automation/EC2Helper 
+2. How to execute the automation:
 
 
     python3 EC2Helper.py --profile <aws_profile> --type ec2 --action enforce_imdsv2  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --revert <true/false if to revert this action> --dryRun<optional dry run>
