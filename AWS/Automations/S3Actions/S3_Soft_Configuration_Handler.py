@@ -5,7 +5,7 @@ import sys
 
 import botocore.exceptions
 
-from TamnoonPlaybooks.Automations.Utils import utils as utils
+from TamnoonPlaybooks.AWS.Automations.Utils import utils as utils
 
 
 def log_setup(log_l):

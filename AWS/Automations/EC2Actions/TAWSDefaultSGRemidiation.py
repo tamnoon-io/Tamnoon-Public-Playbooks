@@ -56,23 +56,37 @@ def _execute_rollback(region_session, region, sg_definition, sg_id=None):
             _auth_egress(permissions['Egress'], sg_id, region_ec2_resource)
 
 def _remove_unused_sg_rules(sg, ec2_resource, is_dry_run, dry_run_result, output_result):
+    '''
+    This function responsible to clean ingress and egress rules from the security group
+    In case of remove
+    :param sg:
+    :param ec2_resource:
+    :param is_dry_run:
+    :param dry_run_result:
+    :param output_result:
+    :return:
+    '''
     sg_id = sg['GroupId']
     security_group = ec2_resource.SecurityGroup(sg['GroupId'])
+    output_result[sg_id]["Ingress"] = dict()
+    output_result[sg_id]["Egress"] = dict()
     if len(sg['IpPermissions']) == 0:
-        output_result[sg_id]["result"] = "Skip"
-        output_result[sg_id]["reason"] = f"No ingress rules to remove for {sg['GroupId']}"
+
+        output_result[sg_id]["Ingress"]["result"] = "Skip"
+        output_result[sg_id]["Ingress"]["reason"] = f"No ingress rules to remove for {sg['GroupId']}"
 
     else:
         if is_dry_run:
-            output_result[sg_id]["result"] = "DryRun"
+            output_result[sg_id]["Ingress"]["result"] = "DryRun"
             dry_run_result.add(sg['GroupId'])
         else:
             security_group.revoke_ingress(IpPermissions=sg['IpPermissions'])
             output_result[sg_id]["result"] = "Executed"
 
     if len(sg['IpPermissionsEgress']) == 0:
-        output_result[sg_id]["result"] = "Skip"
-        output_result[sg_id]["reason"] = f"No egress rules to remove for {sg['GroupId']}"
+
+        output_result[sg_id]["Egress"]["result"] = "Skip"
+        output_result[sg_id]["Egress"]["reason"] = f"No egress rules to remove for {sg['GroupId']}"
     else:
         if is_dry_run:
             output_result[sg_id]["result"] = "DryRun"
@@ -88,7 +102,7 @@ def _remove_unused_sg_rules(sg, ec2_resource, is_dry_run, dry_run_result, output
                 'Key': 'Tamnoon-Tag',
                 'Value': 'SecurityGroup-To-Remove'
             }
-            curr_tags = security_group.tags if security_group.tags else []
+            curr_tags = []
             curr_tags.append(tamnoon_remove_tag)
             tag = security_group.create_tags(Tags=curr_tags)
 
@@ -155,6 +169,7 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
     else:
         logging.info(f"Start execute security group rules removal")
 
+    state_dict = dict()
     if os.path.exists(state_path):
         with open(state_path, "r") as state_file:
             try:
