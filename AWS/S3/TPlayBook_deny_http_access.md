@@ -7,7 +7,7 @@
 This playbook describes how to execute Tamnoon S3 soft configuration automation to add deny policy for HTTP access.
 
 The authentication process for this playbook follows the standard AWS set of fallbacks:
-1. If AWS profile or aws access key and secret were given, use it as an AWS credentials source.
+1. If an AWS profile or aws access key and secret are given, use it as an AWS credentials source.
 2. If no profile, use as environment variable credentials for aws.
 3. If not environmental variables provided, use the current ./~aws configuration
 
