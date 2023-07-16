@@ -6,6 +6,7 @@ import sys
 import boto3
 import re
 
+from ..Utils import utils as utils
 def log_setup(log_l):
     """This method setup the logging level an params
         logs output path can be controlled by the log stdout cmd param (stdout / file)
@@ -71,21 +72,6 @@ def print_help():
 
     )
     print(text)
-
-def setup_botot_session(profile):
-    if profile:
-        session = boto3.Session(profile_name=profile)
-    else:
-        session = boto3.Session()
-
-    # Test for valid credentials
-    sts_client = session.client("sts")
-    try:
-        sts_response = sts_client.get_caller_identity()
-        return session
-    except:
-        print("No or invalid AWS credentials configured")
-        sys.exit(1)
 
 
 def do_get_list_of_resources(session):
@@ -163,6 +149,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--logLevel', required=False, type=str, default="INFO")
     parser.add_argument('--profile', required=False, default=None)
+    parser.add_argument('--awsAccessKey', required=False, type=str, default=None)
+    parser.add_argument('--awsSecret', required=False, type=str, default=None)
+    parser.add_argument('--awsSessionToken', required=False, type=str, default=None)
     parser.add_argument('--service', required=False, type=str, default=None)
     parser.add_argument('--assets', required=False, type=str, default=None)
     parser.add_argument('--action', required=True, type=str)
@@ -181,6 +170,9 @@ if __name__ == '__main__':
 
     result = None
     profile = args.profile
+    aws_access_key = args.awsAccessKey
+    aws_secret = args.awsSecret
+    aws_session_token = args.awsSessionToken
     action = args.action
     service = args.service
     tag_value = args.tagValue
@@ -188,11 +180,9 @@ if __name__ == '__main__':
     is_revert = args.revert
     assets_list = args.assets
 
+    session=utils.setup_session(profile=profile, aws_secret=aws_secret, aws_access_key=aws_access_key, aws_session_token=aws_session_token)
 
 
-
-    logging.info("Going to setup client")
-    session = setup_botot_session(profile)
 
     if action == "ls":
         supported_resource_list = do_get_list_of_resources(session=session)

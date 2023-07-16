@@ -6,8 +6,8 @@
 ## Description
 This playbook describes how to execute Tamnoon EC2Helper automation to get security group usage.
 
-The authentication process for this playbook follows the standard AWS set of fallbacks:
-1. If an AWS profile or aws access key and secret are given, use it as an AWS credentials source.
+The execution is based on AWS credentials configuration based on the next fallbacks:
+1. If AWS profile or aws access key and secret were given, use it as an AWS credentials source.
 2. If no profile, use as environment variable credentials for aws.
 3. If not environmental variables provided, use the current ./~aws configuration
 

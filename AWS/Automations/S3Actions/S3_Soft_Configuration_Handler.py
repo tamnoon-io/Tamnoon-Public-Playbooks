@@ -5,7 +5,7 @@ import sys
 
 import botocore.exceptions
 
-from TamnoonPlaybooks.AWS.Automations.Utils import utils as utils
+from ..Utils import utils as utils
 
 
 def log_setup(log_l):
@@ -225,8 +225,10 @@ def do_s3_ls(client, bucket_name):
 
 def _check_statment_exist(statement, curr_policy):
     for sts in curr_policy['Statement']:
-        if sts['Effect'] == statement['Effect'] and sts['Principal'] == statement['Principal'] and sts['Action'] == statement['Action'] and sts['Condition'] == statement['Condition'] and sorted(sts['Resource']) == sorted(statement['Resource']):
-                return True
+        if sts['Effect'] == statement['Effect'] and sts['Principal'] == statement['Principal'] and sts['Action'] == \
+                statement['Action'] and sts['Condition'] == statement['Condition'] and sorted(
+                sts['Resource']) == sorted(statement['Resource']):
+            return True
     return False
 
 
@@ -265,7 +267,8 @@ def do_block_http(client, bucket_name):
             logging.info(f"HTTP Deny policy already exist")
             return
     except botocore.exceptions.ClientError as e:
-        if 'Error' in e.response and 'Code' in  e.response['Error'] and e.response['Error']['Code'] == 'NoSuchBucketPolicy':
+        if 'Error' in e.response and 'Code' in e.response['Error'] and e.response['Error'][
+            'Code'] == 'NoSuchBucketPolicy':
             response = client.put_bucket_policy(
                 Bucket=bucket_name,
                 Policy=json.dumps(policy)
@@ -336,6 +339,7 @@ if __name__ == '__main__':
     parser.add_argument('--profile', required=False, default=None)
     parser.add_argument('--awsAccessKey', required=False, type=str, default=None)
     parser.add_argument('--awsSecret', required=False, type=str, default=None)
+    parser.add_argument('--awsSessionToken', required=False, type=str, default=None)
     parser.add_argument('--action', required=True, type=str)
     parser.add_argument('--bucketNames', required=True, type=str)
     parser.add_argument('--actionParmas', required=False, type=str, default=None)
@@ -355,6 +359,7 @@ if __name__ == '__main__':
     profile = args.profile
     aws_access_key = args.awsAccessKey
     aws_secret = args.awsSecret
+    aws_session_token = args.awsSessionToken
     action = args.action
     regions = args.regions
     bucket_names = args.bucketNames
@@ -365,17 +370,17 @@ if __name__ == '__main__':
     if regions:
         logging.info(f"Going to run over {regions} - region")
         # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
-        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
+        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
         list_of_regions = utils.get_regions(regions_param=regions, session=session)
         for region in list_of_regions:
             logging.info(f"Working on Region - {region}")
             session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
-                                          aws_secret=aws_secret)
+                                          aws_secret=aws_secret, aws_session_token=aws_session_token)
             client = setup_client(session)
             action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert,
                                        action=action, params=params)
     else:
-        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
+        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
         logging.info(f"Going to run over the default - {session.region_name} - region")
         client = setup_client(session)
         action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert, action=action,

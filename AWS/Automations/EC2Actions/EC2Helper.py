@@ -6,6 +6,8 @@ import os
 import boto3
 import botocore.exceptions
 
+from ..Utils import utils as utils
+
 
 def log_setup(log_l):
     """This method setup the logging level an params
@@ -113,28 +115,6 @@ def print_help():
 
     )
     print(text)
-
-
-def setup_session(profile=None, region=None, aws_access_key=None, aws_secret=None):
-    '''
-    This method setup the boto session to AWS
-    :param profile:  The aws credentials profile as they defined on the machine (~/.aws/credentials)
-    :param region:   The aws target region to execute on
-    :param aws_access_key:
-    :param aws_secret:
-    :return:
-    '''
-    if profile:
-        if region:
-            return boto3.Session(profile_name=profile, region_name=region)
-        return boto3.Session(profile_name=profile)
-    if aws_access_key and aws_secret:
-        if region:
-            return boto3.Session(region_name=region, aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
-        return boto3.Session(aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
-    if region:
-        return boto3.Session(region_name=region)
-    return boto3.Session()
 
 
 def do_snapshot_delete(resource, asset_id, dry_run):
@@ -285,38 +265,6 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
         if len(sg_to_nic) > 0:
             investigation_result['nic'] = sg_to_nic
         return investigation_result
-
-
-def _get_regions(regions_param, session):
-    """
-    This method extract thje list of regions to run over
-    :param regions_param: The input region parameter - could be single region, multi regions (reg1,reg2...) or 'all'
-    :param session: boto3 ec2 session
-    :return:
-    """
-    regions_list = list()
-    default_region = 'us-east-1'
-    logging.info(f"Get regions")
-    if 'all' in regions_param:
-        try:
-            account_client = session.client('account')
-            response = account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
-            regions_list = [x["RegionName"] for x in response["Regions"]]
-            logging.info(f"Got {len(regions_list)} regions")
-            return regions_list
-            # ec2_client = session.client('ec2')
-            # response = ec2_client.describe_regions(AllRegions=True)
-            # for region in response['Regions']:
-            #    regions_list.append(region['RegionName'])
-
-        except botocore.exceptions.NoRegionError as nr:
-            logging.warning(f"falling back to default region - {default_region}")
-            account_client = session.client('account', region_name=default_region)
-            response = account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
-            regions_list = [x["RegionName"] for x in response["Regions"]]
-            return regions_list
-
-    return regions_param.split(",")
 
 
 def _get_vpcs_in_region(session):
@@ -544,6 +492,7 @@ if __name__ == '__main__':
     parser.add_argument('--regions', required=False, type=str, default=None)
     parser.add_argument('--awsAccessKey', required=False, type=str, default=None)
     parser.add_argument('--awsSecret', required=False, type=str, default=None)
+    parser.add_argument('--awsSessionToken', required=False, type=str, default=None)
     parser.add_argument('--assetIds', required=False, type=str)
     parser.add_argument('--actionParams', required=False, type=json.loads, default=None)
     parser.add_argument('--dryRun', required=False, type=bool, default=False)
@@ -568,23 +517,24 @@ if __name__ == '__main__':
     regions = args.regions
     aws_access_key = args.awsAccessKey
     aws_secret = args.awsSecret
+    aws_session_token = args.awsSessionToken
 
     result = dict()
     if regions:
         logging.info(f"Going to run over {regions} - region")
         # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
-        session = setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
-        list_of_regions = _get_regions(regions_param=regions, session=session)
+        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+        list_of_regions = utils.get_regions(regions_param=regions, session=session)
         for region in list_of_regions:
             logging.info(f"Working on Region - {region}")
-            session = setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
-                                    aws_secret=aws_secret)
+            session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
+                                    aws_secret=aws_secret, aws_session_token=aws_session_token)
             action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
                                        asset_ids=asset_ids, action_parmas=params)
             if len(action_result) > 0:
                 result[region] = action_result
     else:
-        session = setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret)
+        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
         logging.info(f"Going to run over the default - {session.region_name} - region")
         action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
                                    asset_ids=asset_ids,

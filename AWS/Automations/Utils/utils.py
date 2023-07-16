@@ -33,7 +33,7 @@ def get_regions(regions_param, session):
 
     return regions_param.split(",")
 
-def setup_session(profile=None, region=None, aws_access_key=None, aws_secret=None):
+def setup_session(profile=None, region=None, aws_access_key=None, aws_secret=None, aws_session_token=None):
     '''
     This method setup the boto session to AWS
     :param profile:  The aws credentials profile as they defined on the machine (~/.aws/credentials)
@@ -48,7 +48,12 @@ def setup_session(profile=None, region=None, aws_access_key=None, aws_secret=Non
         return boto3.Session(profile_name=profile)
     if aws_access_key and aws_secret:
         if region:
+            if aws_session_token:
+                return boto3.Session(region_name=region, aws_access_key_id=aws_access_key,
+                                     aws_secret_access_key=aws_secret, aws_session_token=aws_session_token)
             return boto3.Session(region_name=region, aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
+        if aws_session_token:
+            return boto3.Session(aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret, aws_session_token=aws_session_token)
         return boto3.Session(aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
     if region:
         return boto3.Session(region_name=region)
