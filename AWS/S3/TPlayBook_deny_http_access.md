@@ -14,13 +14,13 @@ The execution is based on AWS credentials configuration based on the next fallba
 After authentication via AWS API, the script execution will run on the same AWS account of those credentials defined in fallbacks 1-3 (see above)
 
 ## Playbook steps:
-1. Clone the folder Automation/S3SoftConfiguration 
-2. How to execute the automation:
+1. Clone the folder AWS/Automation/S3SoftConfiguration
+2. Execute the automation from the /AWS directory
 
 
-    python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action block_http  --bucketNames <The S3 bucket name> 
+    python3 -m Automations.EC2Actions.S3_Soft_Configuration_Handler --profile <aws_profile> --action block_http  --bucketNames <The S3 bucket name> 
     
-    python3 S3_Soft_Configuration_Handler.py --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --action block_http  --bucketNames <The S3 bucket name> 
+    python3 -m Automations.EC2Actions.S3_Soft_Configuration_Handler --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --action block_http  --bucketNames <The S3 bucket name> 
 
    
 
