@@ -14,12 +14,13 @@ The execution is based on AWS credentials configuration based on the next fallba
 After authentication via AWS API, the script execution will run on the same AWS account of those credentials defined in fallbacks 1-3 (see above)
 
 ## Playbook steps:
-1. Clone the code from folder Automation/IAMHelper
-2. Execute the automation 
+1. Clone the folder AWS/Automation/IAMHelper
+2. Execute the automation from the /AWS directory
+
  
-          python3 IAMHelper.py --profile <aws_profile> --type IAMUser --action delete --assetIds <list of instances to remediate> --dryRun<optional dry run>
+          python3 -m Automations.EC2Actions.IAMHelper --profile <aws_profile> --type IAMUser --action delete --assetIds <list of instances to remediate> --dryRun<optional dry run>
           or 
-          python3 IAMHelper.py --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --type IAMUser --action delete --assetIds <list of instances to remediate> --dryRun<optional dry run>
+          python3 -m Automations.EC2Actions.IAMHelper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --type IAMUser --action delete --assetIds <list of instances to remediate> --dryRun<optional dry run>
 
 
 
