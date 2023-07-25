@@ -14,13 +14,13 @@ The execution is based on AWS credentials configuration based on the next fallba
 After authentication via AWS API, the script execution will run on the same AWS account of those credentials defined in fallbacks 1-3 (see above)
 
 ## Playbook steps:
-1. Clone the folder Automation/EC2Helper 
-2. How to execute the automation:
+1. Clone the folder AWS/Automation/EC2Helper
+2. Execute the automation from the /AWS directory
 
 
-    python3 EC2Helper.py --profile <aws_profile> --type ec2 --action enforce_imdsv2  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --revert <true/false if to revert this action> --dryRun<optional dry run>
+    python3 -m Automations.EC2Actions.EC2Helper --profile <aws_profile> --type ec2 --action enforce_imdsv2  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --revert <true/false if to revert this action> --dryRun<optional dry run>
 
-    python3 EC2Helper.py --awsAccessKey <aws_access_key> --awsSecret <aws_secret> ec2 --action enforce_imdsv2  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --revert <true/false if to revert this action> --dryRun<optional dry run>
+    python3 -m Automations.EC2Actions.EC2Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> ec2 --action enforce_imdsv2  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --revert <true/false if to revert this action> --dryRun<optional dry run>
 
 actionParmas:
 1. HttpPutResponseHopLimit - (Optional) - The desired HTTP PUT response hop limit for instance metadata requests. The larger the number, the further instance metadata requests can travel. If no parameter is specified, the existing state is maintained. The value is number >=1.

@@ -14,21 +14,21 @@ The execution is based on AWS credentials configuration based on the next fallba
 After authentication via AWS API, the script execution will run on the same AWS account of those credentials defined in fallbacks 1-3 (see above)
 
 ## Playbook steps:
-1. Clone the folder Automation/EC2Helper 
+1. Clone the folder AWS/Automation/EC2Helper
 
 ### Approach 1: Remove rules before deleting the security groups
-1. Execute the automation for remove inbound/outbound rules of unused security group 
+1. Execute the automation for remove inbound/outbound rules of unused security group from the /AWS directory 
  
-          python3 EC2Helper.py --profile <aws_profile> --type security-group --action clean_unused_sg  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params >  --dryRun<optional dry run>
+          python3 -m Automations.EC2Actions.EC2Helper --profile <aws_profile> --type security-group --action clean_unused_sg  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params >  --dryRun<optional dry run>
           or 
-          python3 EC2Helper.py --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --type security-group --action clean_unused_sg  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --dryRun<optional dry run>
+          python3 -m Automations.EC2Actions.EC2Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --type security-group --action clean_unused_sg  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --dryRun<optional dry run>
 2. Wait some period time before delete them (recommended 1 week)
 
-3. Execute the automation for the security group deletion
+3. Execute the automation for the security group deletion from the /AWS directory
           
-          python3 EC2Helper.py --profile <aws_profile> --type security-group --action remove_unused_sg  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params >  --dryRun<optional dry run>
+          python3 -m Automations.EC2Actions.EC2Helper --profile <aws_profile> --type security-group --action remove_unused_sg  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params >  --dryRun<optional dry run>
           or 
-          python3 EC2Helper.py --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --type security-group --action remove_unused_sg  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --dryRun<optional dry run>
+          python3 -m Automations.EC2Actions.EC2Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --type security-group --action remove_unused_sg  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --dryRun<optional dry run>
 
 ### Approach 2: Delete the security groups
 1. Execute the automation for remove the security group

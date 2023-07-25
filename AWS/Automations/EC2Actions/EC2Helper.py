@@ -228,7 +228,7 @@ def do_sg_delete(resource, asset_id, dry_run):
 
 
 def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
-    from TAWSDefaultSGRemidiation import execute, get_sg_usage
+    from .TAWSDefaultSGRemidiation import execute, get_sg_usage
     """
        This function is the implementation for security group actions
        :param session: boto3 session
@@ -482,6 +482,7 @@ def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=No
 
 
 if __name__ == '__main__':
+
 
     # TODO - Work on desc for params
     parser = argparse.ArgumentParser()
