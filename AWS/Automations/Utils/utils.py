@@ -134,5 +134,5 @@ def export_data(file_name, output, export_format='JSON'):
         logging.info(f"Save execution result to - json to path: {file_name}-{str(time.time())}.json")
     if export_format == "CSV":
         import pandas as pd
-        pd.json_normalize(output).to_csv(f"{file_name}-{str(time.time())}.json")
-        logging.info(f"Save execution result to - csv to path: {file_name}-{str(time.time())}.json")
+        pd.json_normalize(output).to_csv(f"{file_name}-{str(time.time())}.csv")
+        logging.info(f"Save execution result to - csv to path: {file_name}-{str(time.time())}.csv")
