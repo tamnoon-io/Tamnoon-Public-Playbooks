@@ -8,10 +8,16 @@ This repo will contain the Tamnoon Inc public playbooks
 ### Option 1 - Clone specific folder 
 
     git clone -n --depth=1 --filter=tree:0 https://github.com/tamnoon-io/Tamnoon-Public-Playbooks
-
     cd Tamnoon-Public-Playbooks
     git sparse-checkout set --no-cone <The specific folder to clone>
     git checkout
+
+    example: Cloning the AWS folder for execute AWS automations:
+        git clone -n --depth=1 --filter=tree:0 https://github.com/tamnoon-io/Tamnoon-Public-Playbooks
+        cd Tamnoon-Public-Playbooks
+        git sparse-checkout set --no-cone AWS
+        git checkout
+
 
 ### Opion 2 - Clone the entire repository and execute the automation through the specific folder
 
