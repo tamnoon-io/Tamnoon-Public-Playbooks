@@ -1,6 +1,5 @@
 import argparse
 import json
-import requests
 import logging
 import sys
 import boto3

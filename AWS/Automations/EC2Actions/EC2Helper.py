@@ -5,6 +5,7 @@ import sys
 import os
 import boto3
 import botocore.exceptions
+import re
 
 from ..Utils import utils as utils
 
@@ -292,7 +293,7 @@ def _get_vpcs_in_region(session):
             return list()
 
 
-def do_vpc_action(session, dry_run, action, asset_ids, parmas=None):
+def do_vpc_action(session, dry_run, action, asset_ids, action_parmas=None):
     """
     This is the function that handle the vpc actions
     :param session: The boto3 session
@@ -304,9 +305,9 @@ def do_vpc_action(session, dry_run, action, asset_ids, parmas=None):
     """
     log_group_name = None
 
-    deliver_logs_permission_arn = parmas['DeliverLogsPermissionArn']
+    deliver_logs_permission_arn = action_parmas['DeliverLogsPermissionArn']
     if action == 'create_flow_log':
-        if not parmas or 'DeliverLogsPermissionArn' not in parmas:
+        if not action_parmas or 'DeliverLogsPermissionArn' not in action_parmas:
             logging.error(
                 f"Can't create a vpc flow log, missing required configuration param - DeliverLogsPermissionArn\n"
                 f"The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account.")
@@ -319,19 +320,19 @@ def do_vpc_action(session, dry_run, action, asset_ids, parmas=None):
         if len(asset_ids) == 1 and asset_ids[0] == 'all':
             list_of_vpcs = _get_vpcs_in_region(session)
             for asset_id in list_of_vpcs:
-                if not 'LogGroupName' in parmas:
+                if not 'LogGroupName' in action_parmas:
                     log_group_name = f"Vpc_FlowLog_{asset_id}"
                 else:
-                    log_group_name = parmas['LogGroupName']
+                    log_group_name = action_parmas['LogGroupName']
                 do_create_flow_log(session=session, asset_id=asset_id, dry_run=dry_run,
                                    log_group_name=log_group_name,
                                    deliver_logs_permission_arn=deliver_logs_permission_arn)
         else:
             for asset_id in asset_ids:
-                if not 'LogGroupName' in parmas:
+                if not 'LogGroupName' in action_parmas:
                     log_group_name = f"Vpc_FlowLog_{asset_id}"
                 else:
-                    log_group_name = parmas['LogGroupName']
+                    log_group_name = action_parmas['LogGroupName']
 
                 logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
                 do_create_flow_log(session=session, asset_id=asset_id, dry_run=dry_run, log_group_name=log_group_name,
@@ -443,7 +444,7 @@ def do_imdsv2_action(client, asset_id, dry_run, http_hope, roll_back, state_path
         raise e
 
 
-def do_ec2_action(session, dry_run, action, asset_ids, parmas):
+def do_ec2_action(session, dry_run, action, asset_ids, action_parmas):
     """
     This is the Ec2 helper function to execute boto3 api call for ec2 configration
     :param session:
@@ -458,9 +459,9 @@ def do_ec2_action(session, dry_run, action, asset_ids, parmas):
         client = session.client('ec2')
         for asset_id in asset_ids:
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
-            http_hope = parmas['HttpPutResponseHopLimit'] if params and 'HttpPutResponseHopLimit' in parmas else -1
-            roll_back = parmas['revert'] if params and 'revert' in params else False
-            state_path = params['statePath'] if params and 'statePath' in parmas else None
+            http_hope = action_parmas['HttpPutResponseHopLimit'] if params and 'HttpPutResponseHopLimit' in action_parmas else -1
+            roll_back = action_parmas['revert'] if action_parmas and 'revert' in action_parmas else False
+            state_path = action_parmas['statePath'] if action_parmas and 'statePath' in action_parmas else None
             do_imdsv2_action(client=client, asset_id=asset_id, dry_run=dry_run, http_hope=http_hope,
                              roll_back=roll_back, state_path=state_path)
         return {}
@@ -468,17 +469,117 @@ def do_ec2_action(session, dry_run, action, asset_ids, parmas):
     return {'error': 'no action found'}
 
 
+def do_disable_public_ip_assignment(client, asset_ids, dry_run, excluded_subnets, roll_back):
+    """
+    This function executing the logic of disabling the automated public ip assigment for subnet
+    :param client:
+    :param asset_ids:
+    :param dry_run:
+    :param excluded_subnets:
+    :param roll_back:
+    :return:
+    """
+    excluded_subnets_regex = None
+    if excluded_subnets:
+        excluded_subnets_regex = "|".join([x.strip() for x in re.sub(',|;', " ", excluded_subnets).split()])
+
+    # Get all the potential subnets - list of all subnets in the region
+    potential_subnets = list()
+    subnets_resp  = client.describe_subnets()
+    potential_subnets = potential_subnets + subnets_resp['Subnets']
+    while 'NextToken' in subnets_resp and subnets_resp['NextToken']:
+        subnets_resp = client.describe_subnets(NextToken=subnets_resp['NextToken'])
+        potential_subnets = potential_subnets + subnets_resp['Subnets']
+
+    results = list()
+    # Work for each subnet
+    for subnet in potential_subnets:
+        current_setting = subnet['MapPublicIpOnLaunch']
+        record = {"region": region, "vpcId": subnet['VpcId'], "subnetId": subnet['SubnetId'],
+                  "MapPublicIpOnLaunch": current_setting}
+
+        #Goin to check exclusion over subnet Name or Id
+        tag_name = subnet["Tags"]["Name"] if "Tags" in subnet and "Name" in subnet["Tags"] else None
+
+        # check if subnet should be excluded or not part of the provided subnets ids
+        if (excluded_subnets_regex and \
+                ((tag_name and re.search(excluded_subnets_regex, tag_name))
+                 or re.search(excluded_subnets_regex, subnet['SubnetId'])))\
+                or asset_ids and subnet['SubnetId'] not in asset_ids:
+            logging.info(f"Subnet - {record['subnetId']} in Vpc - {record['vpcId']} at region - {record['region']} is excluded or not part of the provided subnets ids, going to skip this one")
+            record['actionResult'] = "SKIP"
+        else:
+            if not current_setting:
+                # no setting on and this is not roll-back
+                if not roll_back:
+                    logging.info(
+                        f"For Subnet - {record['subnetId']} in Vpc - {record['vpcId']} at region - {record['region']} public ip on lunch setting is off")
+                    record['actionResult'] = "NO-NEED"
+                else:
+                    # roll-back -execution
+                    logging.info(
+                        f"Enabling auto-assign public IP for subnet {record['subnetId']} in VPC {record['vpcId']} in region {record['region']} - roll-back")
+                    if dry_run:
+                        logging.info("############## Dry Run ###################")
+                        record['actionResult'] = "DRY-RUN: CHANGED"
+                    else:
+                        client.modify_subnet_attribute(SubnetId=record['subnetId'], MapPublicIpOnLaunch={'Value': True})
+                        record['actionResult'] = "ROLL-BACK"
+
+
+            else:
+                if dry_run:
+                    logging.info("############## Dry Run ###################")
+                    record['actionResult'] = "DRY-RUN: CHANGED"
+                    logging.info(
+                        f"Disabling auto-assign public IP for subnet {record['subnetId']} in VPC {record['vpcId']} in region {record['region']}")
+                else:
+                    logging.info(
+                        f"Disabling auto-assign public IP for subnet {record['subnetId']} in VPC {record['vpcId']} in region {record['region']}")
+                    client.modify_subnet_attribute(SubnetId=record['subnetId'], MapPublicIpOnLaunch={'Value': False})
+                    record['actionResult'] = "CHANGED"
+        results.append(record)
+    return results
+
+
+
+
+def do_subnet_action(session, dry_run, action, asset_ids, action_parmas):
+    """
+    This is the subnet helper function to execute automation over AWS subnet using boto3 api
+    :param session:
+    :param dry_run:
+    :param action:
+    :param asset_ids:
+    :param parmas:
+    :return:
+    """
+    if action == "disable_public_ip_assignment":
+        client = session.client('ec2')
+        excluded_subnets = action_parmas['excluded_subnets'] if action_parmas and 'excluded_subnets' in action_parmas else None
+        roll_back = action_parmas['rollBack'] if action_parmas and 'rollBack' in action_parmas else None
+
+        return do_disable_public_ip_assignment(client=client, asset_ids=asset_ids, dry_run=dry_run, excluded_subnets=excluded_subnets,
+                         roll_back=roll_back)
+
+
+
+
+
+
 def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=None):
     if asset_type == 'snapshot':
         return do_snapshot_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
-                                  action_parmas=params)
+                                  action_parmas=action_parmas)
     if asset_type == 'security-group':
         return do_sg_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
                             action_parmas=action_parmas)
     if asset_type == 'vpc':
-        return do_vpc_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, parmas=params)
+        return do_vpc_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
     if asset_type == 'ec2':
-        return do_ec2_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, parmas=params)
+        return do_ec2_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
+    if asset_type == 'subnet':
+        return do_subnet_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
 
 
 if __name__ == '__main__':
@@ -488,8 +589,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--logLevel', required=False, type=str, default="INFO")
     parser.add_argument('--profile', required=False, default=None)
-    parser.add_argument('--type', required=True, type=str)
-    parser.add_argument('--action', required=True, type=str)
+    parser.add_argument('--type', required=False, type=str)
+    parser.add_argument('--action', required=False, type=str)
     parser.add_argument('--regions', required=False, type=str, default=None)
     parser.add_argument('--awsAccessKey', required=False, type=str, default=None)
     parser.add_argument('--awsSecret', required=False, type=str, default=None)
@@ -497,6 +598,7 @@ if __name__ == '__main__':
     parser.add_argument('--assetIds', required=False, type=str)
     parser.add_argument('--actionParams', required=False, type=json.loads, default=None)
     parser.add_argument('--dryRun', required=False, type=bool, default=False)
+    parser.add_argument('--file', required=False, type=str, default=None)
 
     if len(sys.argv) == 1 or '--help' in sys.argv or '-h' in sys.argv:
         print_help()
@@ -508,17 +610,21 @@ if __name__ == '__main__':
     log_setup(args.logLevel)
 
     result = None
-    profile = args.profile
-    action = args.action
-    asset_ids = args.assetIds
+
+    params = utils.build_params(args=args)
+
+    profile = params.profile
+    action = params.action
+    asset_ids = params.assetIds
     asset_ids = asset_ids.split(',') if asset_ids else None
-    params = args.actionParams
-    dry_run = args.dryRun
-    asset_type = args.type
-    regions = args.regions
-    aws_access_key = args.awsAccessKey
-    aws_secret = args.awsSecret
-    aws_session_token = args.awsSessionToken
+    action_params = params.actionParams
+    action_params = json.loads(action_params) if action_params and type(action_params) != dict else action_params
+    dry_run = params.dryRun
+    asset_type = params.type
+    regions = params.regions
+    aws_access_key = params.awsAccessKey
+    aws_secret = params.awsSecret
+    aws_session_token = params.awsSessionToken
 
     result = dict()
     if regions:
@@ -531,7 +637,7 @@ if __name__ == '__main__':
             session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
                                     aws_secret=aws_secret, aws_session_token=aws_session_token)
             action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
-                                       asset_ids=asset_ids, action_parmas=params)
+                                       asset_ids=asset_ids, action_parmas=action_params)
             if len(action_result) > 0:
                 result[region] = action_result
     else:
@@ -539,6 +645,8 @@ if __name__ == '__main__':
         logging.info(f"Going to run over the default - {session.region_name} - region")
         action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
                                    asset_ids=asset_ids,
-                                   action_parmas=params)
+                                   action_parmas=action_params)
         if len(action_result) > 0:
             result[session.region_name] = action_result
+
+    utils.export_data(f"Tamnoon-EC2Helper-{asset_type}-{action}-execution-result", result)

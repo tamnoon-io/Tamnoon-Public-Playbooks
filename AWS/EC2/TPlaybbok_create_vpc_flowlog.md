@@ -14,14 +14,34 @@ The execution is based on AWS credentials configuration based on the next fallba
 After authentication via AWS API, the script execution will run on the same AWS account of those credentials defined in fallbacks 1-3 (see above)
 
 ## Playbook steps:
-1. Clone the folder AWS/Automation/EC2Helper
-2. Execute the automation from the /AWS directory
- 
-          python3 -m Automations.EC2Actions.EC2Helper --profile <aws_profile> --type vpc --action create_flow_log  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params >  --dryRun<optional dry run>
+1. Clone the AWS folder from  [Tamnoon-Public-Playbooks](https://github.com/tamnoon-io/Tamnoon-Public-Playbooks)
+2. Execute the automation from AWS directory
+   1. Using CLI parameters:
+
+          python -m Automations.EC2Actions.EC2Helper --profile <aws_profile> --type vpc --action create_flow_log  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params >  --dryRun<optional dry run>
           or 
-          python3 -m Automations.EC2Actions.EC2Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --type vpc --action create_flow_log  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --dryRun<optional dry run>
+          python -m Automations.EC2Actions.EC2Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --type vpc --action create_flow_log  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --dryRun<optional dry run>
+          or 
+          python -m Automations.EC2Actions.EC2Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --awsSessionToken <specific session token> --type vpc --action create_flow_log  --regions <The region/s to works on> --assetIds <list of instances to remediate>  --actionParams <The action params > --dryRun<optional dry run>
+   2. Using YAML file: a yaml file is a text file with a "yml" or "yaml" extension whose content is in the format:
+   
+           key1: value1
+           key2: value2
+      for example the yaml file should look like:
 
+          profile: <aws auth profile to use>
+          type: vpc
+          action: create_flow_log
+          regions:  <The region/s to works on>
+          actionParams: '{"DeliverLogsPermissionArn":<optional>, "LogGroupName":<optional>}'
+          dryRun: <optional dry run>
+          assetIds: <list of instances to remediate>
+      
+      and the execution line:
+           
+           python -m Automations.EC2Actions.EC2Helper --file <path to yaml file>
 
+### This play book support actionParams - Below is description of what value it can take      
 actionParmas:
 1. DeliverLogsPermissionArn - (Mandatory)(string) - The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account.
 2. LogGroupName (Optional)(string) - The name of the target log group to contain the vpc flow logs
