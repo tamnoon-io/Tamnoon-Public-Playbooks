@@ -33,9 +33,9 @@ A recommended practice is to store all private keys locally and utilize SSH agen
 2. SSH to the bastion server and allow forwarding 
     
     ``ssh -i <bastion private key> -A <bastion user>@<bastion public ip>``
-3. On the bastion server, SSH to the target server using T property 
+3. On the bastion server, SSH to the target server.
 
-    ``ssh -T <server_user>@<server ip>``
+    ``ssh <server_user>@<server ip>``
 
 ![better bastion practice](../images/betterBastionPractice.png)
  
