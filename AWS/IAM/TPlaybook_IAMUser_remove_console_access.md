@@ -16,10 +16,31 @@ After authentication via AWS API, the script execution will run on the same AWS 
 ## Playbook steps:
 1. Clone the folder AWS/Automation/IAMHelper
 2. Execute the automation from the /AWS directory
+      1. Using CLI parameters:
  
-          python3 -m Automations.EC2Actions.IAMHelper --profile <aws_profile> --type IAMUser --action remove_console_access --assetIds <list of instances to remediate> --dryRun<optional dry run>
-          or 
-          python3 -m Automations.EC2Actions.IAMHelper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --type IAMUser --action remove_console_access --assetIds <list of instances to remediate> --dryRun<optional dry run>
+              python3 -m Automations.IAMActions.IAMHelper --profile <aws_profile> --type IAMUser --action remove_console_access --assetIds <list of instances to remediate> --dryRun<optional dry run>
+              or 
+              python3 -m Automations.IAMActions.IAMHelper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --type IAMUser --action remove_console_access --assetIds <list of instances to remediate> --dryRun<optional dry run>
+              or
+              python3 -m Automations.IAMActions.IAMHelper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --awsSessionToken <specific session token> --type IAMUser --action remove_console_access --assetIds <list of instances to remediate> --dryRun<optional dry run>
+   
+      2. Using YAML file: a yaml file is a text file with a "yml" or "yaml" extension whose content is in the format:
+   
+              key1: value1
+              key2: value2
+          for example the yaml file should look like:
+
+              profile: <aws auth profile to use>
+              type: IAMUser
+              action: remove_console_access
+              regions:  <The region/s to works on>
+              actionParams: {"rollBack":<True/False>}
+              dryRun: <optional dry run>
+              assetIds: <list of users to remediate>
+      
+          and the execution line:
+           
+               python -m Automations.IAMActions.IAMHelper --file <path to yaml file>
 
 
 
