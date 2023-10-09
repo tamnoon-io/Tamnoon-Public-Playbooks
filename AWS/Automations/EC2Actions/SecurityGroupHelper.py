@@ -34,28 +34,40 @@ def _auth_egress(permissions, sg_id, region_ec2_resource):
     security_group.authorize_egress(IpPermissions=permissions)
 
 
-def _execute_rollback(region_session, region, sg_definition, sg_id=None):
+def _execute_rollback(region_session, region, sg_definition, output_result, sg_id=None):
     region_ec2_resource = region_session.resource('ec2')
     if not sg_id:
         for sg_id, permissions in sg_definition.items():
+            output_result[sg_id] = dict()
+            output_result[sg_id]['Ingress'] = dict()
+            output_result[sg_id]['Egress'] = dict()
             logging.info(f"Going to rollback sg - {sg_id} in region - {region}")
             if 'Ingress' in permissions and len(permissions['Ingress']) > 0:
                 _auth_ingress(permissions['Ingress'], sg_id, region_ec2_resource)
+                output_result[sg_id]['Ingress']['rollBack Status'] = 'Success'
             else:
                 logging.info(f"No Ingress rules for sg -{sg_id} at region - {region}")
+                output_result[sg_id]['Ingress']['rollBack Status'] = 'Skip'
             if 'Egress' in permissions and len(permissions['Egress']) > 0:
                 _auth_egress(permissions['Egress'], sg_id, region_ec2_resource)
+                output_result[sg_id]['Egress']['rollBack Status'] = 'Success'
             else:
                 logging.info(f"No Egress rules for sg -{sg_id} at region - {region}")
+                output_result[sg_id]['Egress']['rollBack Status'] = 'Skip'
     else:
+        output_result[sg_id] = dict()
+        output_result[sg_id]['Ingress'] = dict()
+        output_result[sg_id]['Egress'] = dict()
         logging.info(f"Going to rollback sg - {sg_id} in region - {region}")
-        permissions = sg_definition[sg_id]
-        if 'Ingress' in permissions:
+        permissions = sg_definition
+        if 'Ingress' in permissions and len(permissions['Ingress']) > 0:
             _auth_ingress(permissions['Ingress'], sg_id, region_ec2_resource)
-        if 'Egress' in permissions:
+            output_result[sg_id]['Ingress']['rollBack Status'] = 'Success'
+        if 'Egress' in permissions and len(permissions['Egress']) > 0:
             _auth_egress(permissions['Egress'], sg_id, region_ec2_resource)
+            output_result[sg_id]['Egress']['rollBack Status'] = 'Success'
 
-def _remove_unused_sg_rules(sg, ec2_resource, is_dry_run, dry_run_result, output_result):
+def _remove_unused_sg_rules(sg, ec2_resource, is_dry_run, output_result):
     '''
     This function responsible to clean ingress and egress rules from the security group
     In case of remove
@@ -71,29 +83,25 @@ def _remove_unused_sg_rules(sg, ec2_resource, is_dry_run, dry_run_result, output
     output_result[sg_id]["Ingress"] = dict()
     output_result[sg_id]["Egress"] = dict()
     if len(sg['IpPermissions']) == 0:
-
         output_result[sg_id]["Ingress"]["result"] = "Skip"
         output_result[sg_id]["Ingress"]["reason"] = f"No ingress rules to remove for {sg['GroupId']}"
 
     else:
         if is_dry_run:
             output_result[sg_id]["Ingress"]["result"] = "DryRun"
-            dry_run_result.add(sg['GroupId'])
         else:
             security_group.revoke_ingress(IpPermissions=sg['IpPermissions'])
-            output_result[sg_id]["result"] = "Executed"
+            output_result[sg_id]["result"] = "Success"
 
     if len(sg['IpPermissionsEgress']) == 0:
-
         output_result[sg_id]["Egress"]["result"] = "Skip"
         output_result[sg_id]["Egress"]["reason"] = f"No egress rules to remove for {sg['GroupId']}"
     else:
         if is_dry_run:
             output_result[sg_id]["result"] = "DryRun"
-            dry_run_result.add(sg['GroupId'])
         else:
             security_group.revoke_egress(IpPermissions=sg['IpPermissionsEgress'])
-            output_result[sg_id]["result"] = "Executed"
+            output_result[sg_id]["result"] = "Success"
 
     # tag to remove
     if security_group.group_name != 'default':
@@ -107,7 +115,7 @@ def _remove_unused_sg_rules(sg, ec2_resource, is_dry_run, dry_run_result, output
             tag = security_group.create_tags(Tags=curr_tags)
 
 
-def _delete_unused_sg_rules(sg, region_ec2_resource, is_dry_run, dry_run_result, output_result, tag_deletion):
+def _delete_unused_sg_rules(sg, region_ec2_resource, is_dry_run, output_result, tag_deletion):
     '''
     This method will delete security group - if tag_deletion provided it will delete only security group that have this tag
 
@@ -141,13 +149,20 @@ def _delete_unused_sg_rules(sg, region_ec2_resource, is_dry_run, dry_run_result,
     if go_delete:
         if is_dry_run:
             output_result[sg_id]["result"] = "DryRun"
-            dry_run_result.add(sg['GroupId'])
         else:
             response = security_group.delete(GroupName=sg['GroupId'])
             output_result[sg_id]["result"] = "Deleted"
 
 
-
+def _get_service_usage_name(service_usage_type):
+    if service_usage_type == 'NIC':
+        return 'Network Interface'
+    if service_usage_type == 'Lambda':
+        return 'Lambda'
+    if service_usage_type == 'Launch Template':
+        return 'Launch Template'
+    if service_usage_type == 'Launch Configuration':
+        return 'Launch Configuration'
 
 def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_path, sg_to_rb, asset_ids = None, action_type='Clean', tag_deletion=None):
     '''
@@ -181,12 +196,8 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
     if not is_rollback:
 
         session = aws_session
-
         try:
-            dry_run_result = dict()
             # For each region in aws it will create specific ec2 client and ec2 resource
-            dry_run_result[region] = set()
-
             region_ec2_resource = session.resource('ec2')
             region_client = session.client('ec2')
 
@@ -194,41 +205,37 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
             res_desc_sg = region_client.describe_security_groups()
 
             # get all the nics in the region to check attachment of default sg
-            sg_to_lambda, sg_to_nic = get_sg_usage(session)
+            sgs_usage = get_sg_usage(session)
 
             for sg in res_desc_sg['SecurityGroups']:
                 sg_name = sg['GroupId']
                 if asset_ids:
                     if sg_name not in asset_ids:
                         continue
-                attached_nics = []
-                attached_lambdas = []
 
                 output_result[sg_name] = dict()
                 sg_id = sg['GroupId']
                 sg_ip_permissions = sg['IpPermissions']
                 sg_ip_permissions_egress = sg['IpPermissionsEgress']
+
                 # in case that we focus only on default sg
                 if only_defaults:
-                    if sg_name != 'default': continue
+                    if sg_name != 'default':
+                        continue
 
-                sg_attached_to_nic = sg_id in sg_to_nic and len(sg_to_nic[sg_id])>0
-                sg_attached_to_lambda = sg_id in sg_to_lambda and len(sg_to_lambda[sg_id])>0
-
-                if sg_attached_to_nic:
-                    attached_nics = [nic['id'] for nic in  sg_to_nic[sg_id]]
-                    output_result[sg_name]["result"] = "Skip"
-                    output_result[sg_name]["reason"] = f"security group name - {sg['GroupName']}, id - {sg['GroupId']} is attached to some Network Interface in region - {region} going to skip it"
-                    output_result[sg_name]["attachments"] = f"Attached Network Interfaces  - {','.join(attached_nics)}"
-
-                if sg_attached_to_lambda:
-                    attached_lambdas = [l for l in sg_to_lambda[sg_id]]
-                    output_result[sg_name]["result"] = "Skip"
-                    output_result[sg_name]["reason"] = f"security group name - {sg['GroupName']}, id - {sg['GroupId']} is attached to some lambdas in region - {region} going to skip it"
-                    output_result[sg_name]["attachments"] = f"Attached AWS Lambdas - {','.join(attached_lambdas)}"
-
-                # Unused SG
-                if not sg_attached_to_nic and not sg_attached_to_lambda:
+                # check if the security group is in use
+                if sg_id in sgs_usage and len(sgs_usage[sg_id]) > 0:
+                    output_result[sg_name]["attachments"] = list()
+                    usage_str = f"Going to skip security group name - {sg['GroupName']}, id - {sg['GroupId']} region - {region} is used by "
+                    used_by_services_list = set()
+                    for sg_usage in sgs_usage[sg_id]:
+                        service_usage = _get_service_usage_name(sg_usage['type'])
+                        used_by_services_list.add(service_usage)
+                        output_result[sg_name]["result"] = "Skip"
+                        output_result[sg_name]["attachments"].append(sg_usage)
+                    output_result[sg_name]["reason"] = usage_str + ','.join(list(used_by_services_list))
+                else:
+                    # Unused SG
                     # Save the current sg in the sg state for rollback purpose
                     if region not in state_dict:
                         state_dict[region] = dict()
@@ -237,21 +244,10 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
                     state_dict[region][sg_id]['Egress'] = sg_ip_permissions_egress
 
                     if action_type == 'Clean':
-                        _remove_unused_sg_rules(sg, region_ec2_resource, is_dry_run, dry_run_result[region], output_result)
+                        _remove_unused_sg_rules(sg, region_ec2_resource, is_dry_run, output_result)
                     if action_type == 'Remove' and sg['GroupName'] != 'default':
-                        _delete_unused_sg_rules(sg, region_ec2_resource, is_dry_run, dry_run_result[region],
+                        _delete_unused_sg_rules(sg, region_ec2_resource, is_dry_run,
                                                 output_result, tag_deletion)
-
-
-            logging.info("####################### Status #######################")
-            json_formatted_str = json.dumps(output_result, indent=2)
-            print(json_formatted_str)
-            if is_dry_run:
-                logging.info("####################### Dry Run execution - Nothing executed #######################")
-                for region in dry_run_result:
-                    dry_run_result[region] = list(dry_run_result[region])
-                json_formatted_str = json.dumps(dry_run_result, indent=2)
-                print(json_formatted_str)
 
 
         except Exception as e:
@@ -263,65 +259,76 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
         logging.info(f"Persist the state")
         with open(state_path, "w") as state_path_json:
             json.dump(state_dict, state_path_json)
+
     else:
         with open(state_path, "r") as state_path_json:
-            from botocore.config import Config
             state = json.load(state_path_json)
-            if sg_to_rb == 'All':
-                logging.info(f"Going to rollback all the security groups from state file - {state_path}")
-                for region, sg_definition in state.items():
-                    config = Config(region_name=region)
+            if region in state:
+                for sg_id, sg_definition in state[region].items():
+                    if sg_to_rb == 'All':
+                        logging.info(f"Going to rollback all the security groups from state file - {state_path}")
+                        _execute_rollback(region_session=aws_session, region=region, sg_definition=sg_definition, sg_id=sg_id, output_result=output_result)
+                    else:
+                        if sg_to_rb in sg_definition:
+                            logging.info(f"Going to rollback {sg_to_rb} from state file - {state_path}")
+                            _execute_rollback(region_session=aws_session, region=region, sg_definition=sg_definition, sg_id=sg_to_rb, output_result=output_result)
 
-                    # modify the session to use the new config object
-                    aws_session._session = aws_session._session.clone(
-                        botocore_session=aws_session._session._session,
-                        region_name=region,
-                        config=config
-                    )
-
-                    _execute_rollback(aws_session, region, sg_definition)
-            else:
-                logging.info(f"Going to rollback {sg_to_rb} from state file - {state_path}")
-                for region, sg_definition in state.items():
-                    if sg_to_rb in sg_definition:
-                        config = Config(region_name=region)
-
-                        # modify the session to use the new config object
-                        aws_session._session = aws_session._session.clone(
-                            botocore_session=aws_session._session._session,
-                            region_name=region,
-                            config=config
-                        )
-                        _execute_rollback(aws_session, region, sg_definition, sg_to_rb)
-
+    return output_result
 
 def get_sg_usage(session, asset_ids=None):
-    region_client = session.client('ec2')
-    #nic_to_sg = dict()
-    sg_to_nic = dict()
-    response_nics = region_client.describe_network_interfaces()
+    '''
+    This function return the usage of security groups - if asset_ids array was supplied the result will be narrowed to that scope
+    if not it will bring all the usage of al the security groups
+    :param session:
+    :param asset_ids:
+    :return:
+    '''
+
     # check nics
-    for nic in response_nics['NetworkInterfaces']:
-        #nic_to_sg[nic['NetworkInterfaceId']] = list()
+    region_client = session.client('ec2')
+    sg_usage = dict()
+
+    nic_paginator = region_client.get_paginator('describe_network_interfaces')
+    response_nics = [y for x in nic_paginator.paginate() for y in x['NetworkInterfaces']]
+    for nic in response_nics:
         for group in nic['Groups']:
-            if (asset_ids and group['GroupId'] in asset_ids) or not asset_ids:
-                if group['GroupId'] not in sg_to_nic:
-                    sg_to_nic[group['GroupId']] = list()
-                sg_to_nic[group['GroupId']].append({'id':nic['NetworkInterfaceId'], 'ip':nic['PrivateIpAddress']})
-                #nic_to_sg[nic['NetworkInterfaceId']].append(group['GroupId'])
-    # get all the lambdas to see which on enis attached to that sg
-    #lambda_to_sg = dict()
-    sg_to_lambda = dict()
-    region_client = session.client('lambda')
-    response_lambda = region_client.list_functions()
+            check_security_group_usage(asset_ids, group['GroupId'], {'type':'NIC','id':nic['NetworkInterfaceId'], 'ip':nic['PrivateIpAddress']}, sg_usage)
+
     # check also lambdas
-    for lambda_asset in response_lambda['Functions']:
+    region_client = session.client('lambda')
+    lambda_paginator = region_client.get_paginator('list_functions')
+    response_lambda = [y for x in lambda_paginator.paginate() for y in x['Functions']]
+    for lambda_asset in response_lambda:
         if 'VpcConfig' in lambda_asset and 'SecurityGroupIds' in lambda_asset['VpcConfig']:
-            #lambda_to_sg[lambda_asset['FunctionName']] = list()
             for group in lambda_asset['VpcConfig']['SecurityGroupIds']:
-                if (asset_ids and group in asset_ids) or not asset_ids:
-                    if group not in sg_to_lambda:
-                        sg_to_lambda[group] = list()
-                    sg_to_lambda[group].append(lambda_asset['FunctionName'])
-                    #lambda_to_sg[lambda_asset['FunctionName']].append(group)
-    return sg_to_lambda, sg_to_nic
+                check_security_group_usage(asset_ids, group, {'type':'Lambda','id':lambda_asset['FunctionName']}, sg_usage)
+
+    # Check also ASG launch templates
+
+    region_client=session.client('ec2')
+    lt_paginator = region_client.get_paginator('describe_launch_templates')
+    lts=[y for x in lt_paginator.paginate() for y in x['LaunchTemplates']]
+    for lt in lts:
+        lt_versions = region_client.describe_launch_template_versions(LaunchTemplateId=lt['LaunchTemplateId'])
+        for lt_version in lt_versions['LaunchTemplateVersions']:
+            for lt_data_nic in lt_version['LaunchTemplateData']['NetworkInterfaces']:
+                for group in lt_data_nic['Groups']:
+                    check_security_group_usage(asset_ids, group, {'type':'Launch Template','id':lt['LaunchTemplateId']}, sg_usage)
+
+    # Check also ASG launch configuration
+
+    region_client = session.client('autoscaling')
+    asg_paginator = region_client.get_paginator('describe_launch_configurations')
+    lconfigs = [y for x in asg_paginator.paginate() for y in x['LaunchConfigurations']]
+    for launch_cfg in lconfigs:
+        for group in launch_cfg['SecurityGroups']:
+            check_security_group_usage(asset_ids, group, {'type':'Launch Configuration','id':launch_cfg['LaunchConfigurationName']}, sg_usage)
+
+    return sg_usage
+
+
+def check_security_group_usage(asset_ids, group, usage_desc, sg_to_service):
+    if (asset_ids and group in asset_ids) or not asset_ids:
+        if group not in sg_to_service:
+            sg_to_service[group] = list()
+        sg_to_service[group].append(usage_desc)

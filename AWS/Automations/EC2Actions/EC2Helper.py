@@ -46,28 +46,21 @@ def print_help():
         '\t\t\t\t The script support the fallback mechanism auth as AWS CLI\n'
         '\t\t\t\t\t profile - send the aws profile as input parameter\n'
         '\t\t\t\t\t key and secret - send the aws key and secret as input parameter\n'
-
-
         '\t\t\t Supported Actions:\n'
         '\t\t\t\t 1. Snapshot - \n'
         '\t\t\t\t\t\t delete, ls\n'
-        '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile>  --type snapshot --action delete --assetIds "snap-1,snap-2" --dryRun True\n'
-        '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile>  --type snapshot --action ls\n'
         '\t\t\t\t\t\t encrypt\n'
         '\t\t\t\t\t\t\t actionParams:\n'
         '\t\t\t\t\t\t\t\t KmsKeyId (OPTIONAL) \n'
         '\t\t\t\t\t\t\t\t\t The kms key to use for encryption, If this parameter is not specified, your KMS key for Amazon EBS is used\n'
-        '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile>  --type snapshot --action encrypt --assetIds "snap-1,snap-2" --actionParams "{\\"KmsKeyId\\":\\"id\\"}"\n'
         '\t\t\t\t 2. SecurityGroup - '
         '\t\t\t\t\t delete  \n'
-        '\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile>  --type security-group --action delete --assetIds "securityGroup1"\n'
         '\t\t\t\t\t clean_unused_sg\n'
         '\t\t\t\t\t\t\t actionParams:\n'
         '\t\t\t\t\t\t\t\t statePath - The path to save the last state of the remediated Security Groups \n'
         '\t\t\t\t\t\t\t\t rollBack - (OPTIONAL) rollBack flag \n'
         '\t\t\t\t\t\t\t\t sgTorollBack - (OPTIONAL) The id for specific security group that we want to rollback \n'
         '\t\t\t\t\t\t\t\t onlyDefaults - (OPTIONAL) Flag to mark to execute only default sg \n'
-        '\t\t\t\t\t\t\t example python3 EC2Helper.py  --type security-group --action clean_unused_sg --actionParams "{\\"statePath\\"":\\"<path to state file>\\"}"\n'
         '\t\t\t\t 3. Vpc - \n'
         '\t\t\t\t\t\t create_flow_log\n'
         '\t\t\t\t\t\t\t actionParams:\n'
@@ -75,10 +68,6 @@ def print_help():
         '\t\t\t\t\t\t\t\t\t The ARN of the IAM role that allows Amazon EC2 to publish flow logs to a CloudWatch Logs log group in your account. \n'
         '\t\t\t\t\t\t\t\t LogGroupName (OPTIONAL)\n'
         '\t\t\t\t\t\t\t\t\t The name of a new or existing CloudWatch Logs log group where Amazon EC2 publishes your flow logs.\n'
-        '\t\t\t\t\t\t\t example python3 EC2Helper.py --awsAccessKey <key> --awsSecret <secret> --type vpc --action create_flow_log --regions all\n'
-        '\t\t\t\t\t\t\t --actionParams "{\"DeliverLogsPermissionArn\":\"<the role arn>\"}" --assetIds all\n'
-        '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile> --type vpc --action create_flow_log --regions all\n'
-        '\t\t\t\t\t\t\t --actionParams "{\"DeliverLogsPermissionArn\":\"<the role arn>\"}" --assetIds all\n'
         '\t\t\t\t 4. EC2 - \n'
         '\t\t\t\t\t\t enforce_imdsv2\n'
         '\t\t\t\t\t\t\t actionParams:\n'
@@ -87,16 +76,18 @@ def print_help():
         '\t\t\t\t\t\t\t\t\t The larger the number, the further instance metadata requests can travel.\n'
         '\t\t\t\t\t\t\t\t\t If no parameter is specified, the existing state is maintained.\n'
         '\t\t\t\t\t\t\t\t\t The value is number >=1.\n'
-        '\t\t\t\t\t\t\t\t revert (OPTIONAL)\n'
+        '\t\t\t\t\t\t\t\t rollBack (OPTIONAL)\n'
         '\t\t\t\t\t\t\t\t\t A flag to decide if to rollback to IMDSv1 - value is true \n'
         '\t\t\t\t\t\t\t\t statePath (OPTIONAL)\n'
         '\t\t\t\t\t\t\t\t\t the path for the state json file\n'
-        '\t\t\t\t\t\t\t example python3 EC2Helper.py --awsAccessKey <key> --awsSecret <secret> --type ec2 --action enforce_imdsv2 --assetIds <The ec2 instance ids>\n'
-        '\t\t\t\t\t\t\t --actionParams "{\"HttpPutResponseHopLimit\":\"<# of http redirect hoped allowed>\"}" \n'
-        '\t\t\t\t\t\t\t example python3 EC2Helper.py --profile <the aws profile> --type ec2 --action enforce_imdsv2 \n'
         '\t\t\t\t\t\t\t --actionParams "{\"DeliverLogsPermissionArn\":\"<the role arn>\"}" --assetIds <The ec2 instance ids>\n'
-
-
+        '\t\t\t\t 4. Subnet - \n'
+        '\t\t\t\t\t\t disable_public_ip_assignment\n'
+        '\t\t\t\t\t\t\t actionParams:\n'
+        '\t\t\t\t\t\t\t\t excluded_subnets (OPTIONAL)\n'
+        '\t\t\t\t\t\t\t\t\t List of subnets to exclude - ids/Names\n'
+        '\t\t\t\t\t\t\t\t rollBack (OPTIONAL)\n'
+        '\t\t\t\t\t\t\t\t\t A flag to decide if to rollback to IMDSv1 - value is true \n'
 
         '\n'
         '\t\t\t\t The script is based on AWS API and documentation \n'
@@ -229,7 +220,7 @@ def do_sg_delete(resource, asset_id, dry_run):
 
 
 def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
-    from .TAWSDefaultSGRemidiation import execute, get_sg_usage
+    from .SecurityGroupHelper import execute, get_sg_usage
     """
        This function is the implementation for security group actions
        :param session: boto3 session
@@ -247,6 +238,8 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
             do_sg_delete(resource=resource, asset_id=asset_id, dry_run=dry_run)
         return {}
     if action == 'clean_unused_sg':
+        if not action_parmas or 'statePath' not in action_parmas:
+            raise Exception(f'statePath have to delivered in case of Security Group cleanup - to be able to roll back ')
         state_path = action_parmas['statePath']
         is_roll_back = action_parmas['rollBack'] if 'rollBack' in action_parmas else None
         only_defualts = action_parmas['onlyDefaults'] if 'onlyDefaults' in action_parmas else False
@@ -254,18 +247,13 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
         action_type = action_parmas['actionType'] if 'actionType' in action_parmas else "Clean"
         tag_deletion = action_parmas['deletionTag'] if 'deletionTag' in action_parmas else None
 
-        execute(is_rollback=is_roll_back, aws_session=session, region=session.region_name, only_defaults=only_defualts,
+        return execute(is_rollback=is_roll_back, aws_session=session, region=session.region_name, only_defaults=only_defualts,
                 is_dry_run=dry_run, state_path=state_path, sg_to_rb=sg_to_rb, asset_ids=asset_ids,
                 tag_deletion=tag_deletion, action_type=action_type)
-        return {}
+
     if action == 'get_usage':
-        investigation_result = dict()
-        sg_to_lambda, sg_to_nic = get_sg_usage(session=session, asset_ids=asset_ids)
-        if len(sg_to_lambda) > 0:
-            investigation_result['lambda'] = sg_to_lambda
-        if len(sg_to_nic) > 0:
-            investigation_result['nic'] = sg_to_nic
-        return investigation_result
+        return get_sg_usage(session=session, asset_ids=asset_ids)
+
 
 
 def _get_vpcs_in_region(session):
@@ -460,7 +448,7 @@ def do_ec2_action(session, dry_run, action, asset_ids, action_parmas):
         for asset_id in asset_ids:
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
             http_hope = action_parmas['HttpPutResponseHopLimit'] if params and 'HttpPutResponseHopLimit' in action_parmas else -1
-            roll_back = action_parmas['revert'] if action_parmas and 'revert' in action_parmas else False
+            roll_back = action_parmas['rollBack'] if action_parmas and 'rollBack' in action_parmas else False
             state_path = action_parmas['statePath'] if action_parmas and 'statePath' in action_parmas else None
             do_imdsv2_action(client=client, asset_id=asset_id, dry_run=dry_run, http_hope=http_hope,
                              roll_back=roll_back, state_path=state_path)
@@ -609,44 +597,49 @@ if __name__ == '__main__':
 
     log_setup(args.logLevel)
 
-    result = None
-
-    params = utils.build_params(args=args)
-
-    profile = params.profile
-    action = params.action
-    asset_ids = params.assetIds
-    asset_ids = asset_ids.split(',') if asset_ids else None
-    action_params = params.actionParams
-    action_params = json.loads(action_params) if action_params and type(action_params) != dict else action_params
-    dry_run = params.dryRun
-    asset_type = params.type
-    regions = params.regions
-    aws_access_key = params.awsAccessKey
-    aws_secret = params.awsSecret
-    aws_session_token = params.awsSessionToken
-
     result = dict()
-    if regions:
-        logging.info(f"Going to run over {regions} - region")
-        # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
-        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
-        list_of_regions = utils.get_regions(regions_param=regions, session=session)
-        for region in list_of_regions:
-            logging.info(f"Working on Region - {region}")
-            session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
-                                    aws_secret=aws_secret, aws_session_token=aws_session_token)
+    try:
+        params = utils.build_params(args=args)
+
+        profile = params.profile
+        action = params.action
+        asset_ids = params.assetIds
+        asset_ids = asset_ids.split(',') if asset_ids else None
+        action_params = params.actionParams
+        action_params = json.loads(action_params) if action_params and type(action_params) != dict else action_params
+        dry_run = params.dryRun
+        asset_type = params.type
+        regions = params.regions
+        aws_access_key = params.awsAccessKey
+        aws_secret = params.awsSecret
+        aws_session_token = params.awsSessionToken
+
+
+
+        if regions:
+            logging.info(f"Going to run over {regions} - region")
+            # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
+            session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+            list_of_regions = utils.get_regions(regions_param=regions, session=session)
+            for region in list_of_regions:
+                logging.info(f"Working on Region - {region}")
+                session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
+                                        aws_secret=aws_secret, aws_session_token=aws_session_token)
+                action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
+                                           asset_ids=asset_ids, action_parmas=action_params)
+                if action_result and len(action_result) > 0:
+                    result[region] = action_result
+        else:
+            session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+            logging.info(f"Going to run over the default - {session.region_name} - region")
             action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
-                                       asset_ids=asset_ids, action_parmas=action_params)
+                                       asset_ids=asset_ids,
+                                       action_parmas=action_params)
             if action_result and len(action_result) > 0:
-                result[region] = action_result
-    else:
-        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
-        logging.info(f"Going to run over the default - {session.region_name} - region")
-        action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
-                                   asset_ids=asset_ids,
-                                   action_parmas=action_params)
-        if action_result and len(action_result) > 0:
-            result[session.region_name] = action_result
+                result[session.region_name] = action_result
+    except Exception as e:
+        logging.error(f"Something Went wrong!!")
+        result['status'] = 'Error'
+        result['message'] = str(e)
 
     utils.export_data(f"Tamnoon-EC2Helper-{asset_type}-{action}-execution-result", result)
