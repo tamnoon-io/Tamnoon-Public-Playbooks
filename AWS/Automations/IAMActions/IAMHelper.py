@@ -76,7 +76,7 @@ class DateTimeEncoder(json.JSONEncoder):
 
 def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=None):
     if asset_type == 'IAMUser':
-        do_user_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids)
+        return do_user_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
     if asset_type == 'IAMRole':
         pass
 
@@ -276,7 +276,66 @@ def do_remove_concole_access(session, user_name, dry_run):
             logging.info(f"The uer doesn't have any console pwd defined")
 
 
-def do_user_action(session, dry_run, action, asset_ids):
+def do_key_deactivation(client, user_name, specific_keys, dry_run, is_roll_back=None):
+    '''
+    This function responsable on access key un activation execution
+    :param client:
+    :param user_name:
+    :param specific_key:
+    :param dry_run:
+    :param is_roll_back:
+    :return:
+    '''
+
+    results = list()
+    if specific_keys:
+
+        for specific_key in specific_keys:
+            if not is_roll_back:
+                response = client.update_access_key(
+                    UserName=user_name,
+                    AccessKeyId=specific_key,
+                    Status='Inactive'
+                )
+                results.append({"asset_id": user_name, "action":f"Inactive access key - {specific_key}", "status":"Success"})
+            else:
+                response = client.update_access_key(
+                    UserName=user_name,
+                    AccessKeyId=specific_key,
+                    Status='Active'
+                )
+                results.append({"asset_id": user_name, "action": f"Inactive access key - {specific_key}", "status": "Roll-Back"})
+    else:
+        # get all access key of user
+        response = client.list_access_keys(UserName=user_name)
+        for access_key in response['AccessKeyMetadata']:
+            access_key_id = access_key['AccessKeyId']
+
+            if dry_run:
+                logging.info(f"DryRun - update access key - {access_key_id} , make Inactive")
+                results.append({"asset_id": user_name, "action": f"Re active access key - {access_key_id}", "status": "Dry-run"})
+
+            if not is_roll_back:
+                response = client.update_access_key(
+                    UserName=user_name,
+                    AccessKeyId=access_key_id,
+                    Status='Inactive'
+                )
+                results.append({"asset_id": user_name, "action": f"Inactive access key - {access_key_id}", "status": "Success"})
+            else:
+                response = client.update_access_key(
+                    UserName=user_name,
+                    AccessKeyId=access_key_id,
+                    Status='Active'
+                )
+                results.append({"asset_id": user_name, "action": f"Inactive access key - {access_key_id}", "status": "Roll-Back"})
+    return results
+
+
+
+
+
+def do_user_action(session, dry_run, action, asset_ids, action_parmas):
     """
     This function is the implementation for IAMUser actions
     :param session: boto3 session
@@ -291,22 +350,34 @@ def do_user_action(session, dry_run, action, asset_ids):
         for asset_id in asset_ids:
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
             pretty_result.append(do_user_last_activity(resource=resource, user_name=asset_id))
-        print(json.dumps(pretty_result, indent=4))
+        return pretty_result
 
     if action == 'delete':
         for asset_id in asset_ids:
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
             do_user_delete(session=session, user_name=asset_id, dry_run=dry_run)
+            return {}
 
     if action == 'ls':
         users = do_ls(session=session)
-        print(json.dumps(users, cls=DateTimeEncoder, indent=4))
+        return users
 
     if action == 'remove_console_access':
         for asset_id in asset_ids:
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
             do_remove_concole_access(session=session, user_name=asset_id, dry_run=dry_run)
+            return {}
 
+    if action == 'deactivate_access_key':
+        result = dict()
+        result['executionsResults'] = list()
+        client = session.client('iam')
+        for asset_id in asset_ids:
+            specific_keys = action_parmas['specificKeys'].split(",") if action_parmas and 'specificKeys' in action_parmas else None
+            is_roll_back = action_parmas['rollBack'] if action_parmas and 'rollBack' in action_parmas else None
+            logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
+            result['executionsResults'].append(do_key_deactivation(client=client, user_name=asset_id, specific_keys=specific_keys, dry_run=dry_run, is_roll_back=is_roll_back))
+            return result
 
 if __name__ == '__main__':
 
@@ -314,8 +385,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--logLevel', required=False, type=str, default="INFO")
     parser.add_argument('--profile', required=False, default=None)
-    parser.add_argument('--type', required=True, type=str)
-    parser.add_argument('--action', required=True, type=str)
+    parser.add_argument('--type', required=False, type=str)
+    parser.add_argument('--action', required=False, type=str)
     parser.add_argument('--regions', required=False, type=str, default=None)
     parser.add_argument('--awsAccessKey', required=False, type=str, default=None)
     parser.add_argument('--awsSecret', required=False, type=str, default=None)
@@ -323,6 +394,7 @@ if __name__ == '__main__':
     parser.add_argument('--assetIds', required=False, type=str)
     parser.add_argument('--actionParams', required=False, type=json.loads, default=None)
     parser.add_argument('--dryRun', required=False, type=bool, default=False)
+    parser.add_argument('--file', required=False, type=str, default=None)
 
     if len(sys.argv) == 1 or '--help' in sys.argv or '-h' in sys.argv:
         print_help()
@@ -334,24 +406,35 @@ if __name__ == '__main__':
     log_setup(args.logLevel)
 
     result = None
-    profile = args.profile
-    action = args.action
-    asset_ids = args.assetIds
-    asset_ids = asset_ids.split(',') if asset_ids else None
-    params = args.actionParams
-    dry_run = args.dryRun
-    asset_type = args.type
 
-    aws_access_key = args.awsAccessKey
-    aws_secret = args.awsSecret
-    aws_session_token = args.awsSessionToken
+    params = utils.build_params(args=args)
+
+    profile = params.profile
+    action = params.action
+    asset_ids = params.assetIds
+    asset_ids = asset_ids.split(',') if asset_ids else None
+    action_params = params.actionParams
+    action_params = json.loads(action_params) if action_params and type(action_params) != dict else action_params
+
+    dry_run = params.dryRun
+    asset_type = params.type
+
+    regions = params.regions
+    aws_access_key = params.awsAccessKey
+    aws_secret = params.awsSecret
+    aws_session_token = params.awsSessionToken
 
     result = dict()
 
     session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+    caller_identity = utils.get_caller_identity(session=session)
 
-    _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
+    action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
                asset_ids=asset_ids,
-               action_parmas=params)
+               action_parmas=action_params)
+    action_result['caller-identity'] = caller_identity
+
+
+    utils.export_data(f"Tamnoon-IAMHelper-{asset_type}-{action}-execution-result", action_result)
 
 

@@ -174,6 +174,8 @@ if __name__ == '__main__':
         logging.info(f"Going to run over {regions} - region")
         # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
         session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+        caller_identity = utils.get_caller_identity(session=session)
+        result['caller-identity'] = caller_identity
         list_of_regions = utils.get_regions(regions_param=regions, session=session)
         for region in list_of_regions:
             logging.info(f"Working on Region - {region}")
@@ -181,15 +183,21 @@ if __name__ == '__main__':
                                     aws_secret=aws_secret, aws_session_token=aws_session_token)
             action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
                                        asset_ids=asset_ids, action_parmas=action_params)
-            if action_result and len(action_result) > 0:
+            if action_result:
                 result[region] = action_result
+            else:
+                result[region] = {}
     else:
         session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+        caller_identity = utils.get_caller_identity(session=session)
+        result['caller-identity'] = caller_identity
         logging.info(f"Going to run over the default - {session.region_name} - region")
         action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
                                    asset_ids=asset_ids,
                                    action_parmas=action_params)
-        if action_result and len(action_result) > 0:
+        if action_result:
             result[session.region_name] = action_result
+        else:
+            result[session.region_name] = {}
 
     utils.export_data(f"Tamnoon-RDSHelper-{asset_type}-{action}-execution-result", result)

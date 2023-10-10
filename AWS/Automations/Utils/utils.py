@@ -14,7 +14,7 @@ import json
 class Params(dict):
     '''
     This class represent the Tamnoon Automation params
-    It will be built based on dict object that containt the params key and value
+    It will be built based on dict object that contain the params key and value
     First class params
         logLevel - The level of the execution logging
         type - The target asset type - ec2/vpc... wil determine the action type
@@ -99,6 +99,10 @@ def setup_session(profile=None, region=None, aws_access_key=None, aws_secret=Non
         return boto3.Session(region_name=region)
     return boto3.Session()
 
+def get_caller_identity(session):
+    sts_client = session.client('sts')
+    response = sts_client.get_caller_identity()
+    return response
 
 def build_params(args):
     """
@@ -117,8 +121,6 @@ def build_params(args):
     else:
         return Params(args.__dict__)
 
-
-
 def export_data(file_name, output, export_format='JSON'):
     """
     This method responsible to export the action execution result
@@ -136,3 +138,11 @@ def export_data(file_name, output, export_format='JSON'):
         import pandas as pd
         pd.json_normalize(output).to_csv(f"{file_name}-{str(time.time())}.csv")
         logging.info(f"Save execution result to - csv to path: {file_name}-{str(time.time())}.csv")
+
+def log_setup(log_l):
+    """This method setup the logging level an params
+        logs output path can be controlled by the log stdout cmd param (stdout / file)
+    """
+    logging.basicConfig(format='[%(asctime)s -%(levelname)s] (%(processName)-10s) %(message)s')
+    log_level = log_l
+    logging.getLogger().setLevel(log_level)

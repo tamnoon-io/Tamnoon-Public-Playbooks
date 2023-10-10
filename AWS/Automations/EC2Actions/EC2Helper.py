@@ -10,13 +10,7 @@ import re
 from ..Utils import utils as utils
 
 
-def log_setup(log_l):
-    """This method setup the logging level an params
-        logs output path can be controlled by the log stdout cmd param (stdout / file)
-    """
-    logging.basicConfig(format='[%(asctime)s -%(levelname)s] (%(processName)-10s) %(message)s')
-    log_level = log_l
-    logging.getLogger().setLevel(log_level)
+
 
 
 def print_help():
@@ -595,7 +589,7 @@ if __name__ == '__main__':
     print_help()
     args = parser.parse_args()
 
-    log_setup(args.logLevel)
+    utils.log_setup(args.logLevel)
 
     result = dict()
     try:
@@ -615,11 +609,12 @@ if __name__ == '__main__':
         aws_session_token = params.awsSessionToken
 
 
-
         if regions:
             logging.info(f"Going to run over {regions} - region")
             # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
             session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+            caller_identity = utils.get_caller_identity(session=session)
+            result['caller-identity'] = caller_identity
             list_of_regions = utils.get_regions(regions_param=regions, session=session)
             for region in list_of_regions:
                 logging.info(f"Working on Region - {region}")
@@ -627,16 +622,22 @@ if __name__ == '__main__':
                                         aws_secret=aws_secret, aws_session_token=aws_session_token)
                 action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
                                            asset_ids=asset_ids, action_parmas=action_params)
-                if action_result and len(action_result) > 0:
+                if action_result:
                     result[region] = action_result
+                else:
+                    result[region] = {}
         else:
             session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+            caller_identity = utils.get_caller_identity(session=session)
+            result['caller-identity'] = caller_identity
             logging.info(f"Going to run over the default - {session.region_name} - region")
             action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
                                        asset_ids=asset_ids,
                                        action_parmas=action_params)
-            if action_result and len(action_result) > 0:
+            if action_result:
                 result[session.region_name] = action_result
+            else:
+                result[session.region_name] = {}
     except Exception as e:
         logging.error(f"Something Went wrong!!")
         result['status'] = 'Error'

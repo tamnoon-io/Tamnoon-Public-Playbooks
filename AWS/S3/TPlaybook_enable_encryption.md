@@ -17,9 +17,9 @@ After authentication via AWS API, the script execution will run on the same AWS 
 1. Clone the folder AWS/Automation/S3SoftConfiguration
 2. Execute the automation from the /AWS directory
 
-       python3 -m Automations.EC2Actions.S3_Soft_Configuration_Handler --profile <aws_profile> --action encryption  --bucketNames <The S3 bucket name> --actionParmas {"kms":<the target buckt to contain the logs>} --revert <true/false if to revert this action>
+       python3 -m Automations.EC2Actions.S3Helper --profile <aws_profile> --action encryption  --bucketNames <The S3 bucket name> --actionParmas {"kms":<the target buckt to contain the logs>} --revert <true/false if to revert this action>
 
-       python3 -m Automations.EC2Actions.S3_Soft_Configuration_Handler --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --action encryption  --bucketNames <The S3 bucket name> --actionParmas {"kms":<the target buckt to contain the logs>} --revert <true/false if to revert this action>
+       python3 -m Automations.EC2Actions.S3Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --action encryption  --bucketNames <The S3 bucket name> --actionParmas {"kms":<the target buckt to contain the logs>} --revert <true/false if to revert this action>
 
 actionParmas:
 1. kms - The id of the kms key to use for encryption (optional) - if not delivered the bucket will be encrypted using s3 key

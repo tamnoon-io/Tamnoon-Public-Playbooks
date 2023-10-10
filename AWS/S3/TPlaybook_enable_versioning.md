@@ -18,9 +18,9 @@ After authentication via AWS API, the script execution will run on the same AWS 
 2. Execute the automation from the /AWS directory
 
 
-    python3 -m Automations.EC2Actions.S3_Soft_Configuration_Handler --profile <aws_profile> --action versioning  --bucketNames <The S3 bucket name> --revert <true/false if to revert this action>
+    python3 -m Automations.EC2Actions.S3Helper --profile <aws_profile> --action versioning  --bucketNames <The S3 bucket name> --revert <true/false if to revert this action>
     
-    python3 -m Automations.EC2Actions.S3_Soft_Configuration_Handler --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --action versioning  --bucketNames <The S3 bucket name> --revert <true/false if to revert this action>
+    python3 -m Automations.EC2Actions.S3Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --action versioning  --bucketNames <The S3 bucket name> --revert <true/false if to revert this action>
 
    
 
