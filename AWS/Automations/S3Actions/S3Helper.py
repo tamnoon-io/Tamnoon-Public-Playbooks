@@ -59,15 +59,15 @@ def print_help():
         '\t\t\t\t https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html\n'
         '\n\n'
         '\t\t\t Executions Examples:\n'
-        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action <The S3 action to execute> --bucketNames <The S3 bucket name>\n'
+        '\t\t\t\t python3 S3Helper.py --profile <aws_profile> --action <The S3 action to execute> --bucketNames <The S3 bucket name>\n'
         '\t\t\t\t --actionParmas <key value dictionary with the action execution params> --revert <true/false if to revert this action>\n\n'
-        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action server_logging  --bucketNames <The S3 bucket name>\n'
+        '\t\t\t\t python3 S3Helper.py --profile <aws_profile> --action server_logging  --bucketNames <The S3 bucket name>\n'
         '\t\t\t\t --actionParmas {"target_bucket":<the target buckt to contain the logs>} --revert <true/false if to revert this action>\n\n'
-        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action encryption  --bucketNames <The S3 bucket name> \n'
+        '\t\t\t\t python3 S3Helper.py --profile <aws_profile> --action encryption  --bucketNames <The S3 bucket name> \n'
         '\t\t\t\t --actionParmas {"kms":<the target buckt to contain the logs>} --revert <true/false if to revert this action>\n\n'
-        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action versioning  --bucketNames <The S3 bucket name>\n'
+        '\t\t\t\t python3 S3Helper.py --profile <aws_profile> --action versioning  --bucketNames <The S3 bucket name>\n'
         '\t\t\t\t --revert <true/false if to revert this action>\n\n'
-        '\t\t\t\t python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action mfa_protection  --bucketNames <The S3 bucket name>\n'
+        '\t\t\t\t python3 S3Helper.py --profile <aws_profile> --action mfa_protection  --bucketNames <The S3 bucket name>\n'
         '\t\t\t\t --actionParmas {"mfa":<The concatenation of the authentication devices serial number, a space, and the value that is displayed on your authentication device>}  --revert <true/false if to revert this action>\n\n'
 
         '\n\n'
@@ -227,7 +227,7 @@ def _check_statment_exist(statement, curr_policy):
     for sts in curr_policy['Statement']:
         if sts['Effect'] == statement['Effect'] and sts['Principal'] == statement['Principal'] and sts['Action'] == \
                 statement['Action'] and sts['Condition'] == statement['Condition'] and sorted(
-                sts['Resource']) == sorted(statement['Resource']):
+            sts['Resource']) == sorted(statement['Resource']):
             return True
     return False
 
@@ -370,7 +370,10 @@ if __name__ == '__main__':
     if regions:
         logging.info(f"Going to run over {regions} - region")
         # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
-        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret,
+                                      aws_session_token=aws_session_token)
+        caller_identity = utils.get_caller_identity(session=session)
+        result['caller-identity'] = caller_identity
         list_of_regions = utils.get_regions(regions_param=regions, session=session)
         for region in list_of_regions:
             logging.info(f"Working on Region - {region}")
@@ -379,9 +382,20 @@ if __name__ == '__main__':
             client = setup_client(session)
             action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert,
                                        action=action, params=params)
+            if action_result:
+                result[region] = action_result
+            else:
+                result[region] = {}
     else:
-        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret,
+                                      aws_session_token=aws_session_token)
+        caller_identity = utils.get_caller_identity(session=session)
+        result['caller-identity'] = caller_identity
         logging.info(f"Going to run over the default - {session.region_name} - region")
         client = setup_client(session)
         action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert, action=action,
                                    params=params)
+        if action_result:
+            result[session.region_name] = action_result
+        else:
+            result[session.region_name] = {}

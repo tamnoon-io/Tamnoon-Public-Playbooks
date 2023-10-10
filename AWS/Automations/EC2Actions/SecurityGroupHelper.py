@@ -311,18 +311,24 @@ def get_sg_usage(session, asset_ids=None):
     for lt in lts:
         lt_versions = region_client.describe_launch_template_versions(LaunchTemplateId=lt['LaunchTemplateId'])
         for lt_version in lt_versions['LaunchTemplateVersions']:
-            for lt_data_nic in lt_version['LaunchTemplateData']['NetworkInterfaces']:
-                for group in lt_data_nic['Groups']:
-                    check_security_group_usage(asset_ids, group, {'type':'Launch Template','id':lt['LaunchTemplateId']}, sg_usage)
+            if 'NetworkInterfaces' in lt_version['LaunchTemplateData']:
+                for lt_data_nic in lt_version['LaunchTemplateData']['NetworkInterfaces']:
+                    for group in lt_data_nic['Groups']:
+                        check_security_group_usage(asset_ids, group, {'type':'Launch Template','id':lt['LaunchTemplateId']}, sg_usage)
+            elif 'SecurityGroupIds' in lt_version['LaunchTemplateData']:
+                for group in lt_version['LaunchTemplateData']['SecurityGroupIds']:
+                    check_security_group_usage(asset_ids, group,
+                                               {'type': 'Launch Template', 'id': lt['LaunchTemplateId']}, sg_usage)
+
 
     # Check also ASG launch configuration
-
     region_client = session.client('autoscaling')
     asg_paginator = region_client.get_paginator('describe_launch_configurations')
     lconfigs = [y for x in asg_paginator.paginate() for y in x['LaunchConfigurations']]
     for launch_cfg in lconfigs:
-        for group in launch_cfg['SecurityGroups']:
-            check_security_group_usage(asset_ids, group, {'type':'Launch Configuration','id':launch_cfg['LaunchConfigurationName']}, sg_usage)
+        if 'SecurityGroups' in launch_cfg:
+            for group in launch_cfg['SecurityGroups']:
+                check_security_group_usage(asset_ids, group, {'type':'Launch Configuration','id':launch_cfg['LaunchConfigurationName']}, sg_usage)
 
     return sg_usage
 
