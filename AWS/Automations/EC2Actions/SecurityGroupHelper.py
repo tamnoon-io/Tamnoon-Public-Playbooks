@@ -165,8 +165,8 @@ def _get_service_usage_name(service_usage_type):
         return 'Launch Configuration'
 
 def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_path, sg_to_rb, asset_ids = None, action_type='Clean', tag_deletion=None):
-    '''
 
+    """
     :param is_rollback: A flag to sign if this is a rollback or not
     :param aws_session: The aws boto session
     :param region: The name of the executed region
@@ -175,7 +175,8 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
     :param state_path: The full path where to save the current state of the remediate security groups
     :param: sg_to_rb: teh sg (1 or All) to rollback
     :return:
-    '''
+    """
+
 
     output_result = dict()
 
@@ -276,59 +277,67 @@ def execute(is_rollback, aws_session, region, only_defaults, is_dry_run, state_p
     return output_result
 
 def get_sg_usage(session, asset_ids=None):
-    '''
+    """
     This function return the usage of security groups - if asset_ids array was supplied the result will be narrowed to that scope
     if not it will bring all the usage of al the security groups
     :param session:
     :param asset_ids:
     :return:
-    '''
+    """
 
     # check nics
     region_client = session.client('ec2')
     sg_usage = dict()
 
     nic_paginator = region_client.get_paginator('describe_network_interfaces')
-    response_nics = [y for x in nic_paginator.paginate() for y in x['NetworkInterfaces']]
+    response_nics = [y for x in nic_paginator.paginate() for y in x.get('NetworkInterfaces', [])]
     for nic in response_nics:
-        for group in nic['Groups']:
-            check_security_group_usage(asset_ids, group['GroupId'], {'type':'NIC','id':nic['NetworkInterfaceId'], 'ip':nic['PrivateIpAddress']}, sg_usage)
+        for group in nic.get('Groups',[]):
+            group_id = group.get('GroupId','')
+            nic_id = nic.get('NetworkInterfaceId', '')
+            nic_ip = nic.get('PrivateIpAddress', '')
+            check_security_group_usage(asset_ids, group_id, {'type':'NIC','id':nic_id, 'ip':nic_ip}, sg_usage)
 
     # check also lambdas
     region_client = session.client('lambda')
     lambda_paginator = region_client.get_paginator('list_functions')
-    response_lambda = [y for x in lambda_paginator.paginate() for y in x['Functions']]
+    response_lambda = [y for x in lambda_paginator.paginate() for y in x.get('Functions', [])]
     for lambda_asset in response_lambda:
         if 'VpcConfig' in lambda_asset and 'SecurityGroupIds' in lambda_asset['VpcConfig']:
             for group in lambda_asset['VpcConfig']['SecurityGroupIds']:
-                check_security_group_usage(asset_ids, group, {'type':'Lambda','id':lambda_asset['FunctionName']}, sg_usage)
+                lambda_id = lambda_asset.get('FunctionName', '')
+                check_security_group_usage(asset_ids, group, {'type':'Lambda','id':lambda_id}, sg_usage)
 
     # Check also ASG launch templates
 
     region_client=session.client('ec2')
     lt_paginator = region_client.get_paginator('describe_launch_templates')
-    lts=[y for x in lt_paginator.paginate() for y in x['LaunchTemplates']]
+    lts=[y for x in lt_paginator.paginate() for y in x.get('LaunchTemplates', [])]
     for lt in lts:
         lt_versions = region_client.describe_launch_template_versions(LaunchTemplateId=lt['LaunchTemplateId'])
         for lt_version in lt_versions['LaunchTemplateVersions']:
             if 'NetworkInterfaces' in lt_version['LaunchTemplateData']:
                 for lt_data_nic in lt_version['LaunchTemplateData']['NetworkInterfaces']:
-                    for group in lt_data_nic['Groups']:
-                        check_security_group_usage(asset_ids, group, {'type':'Launch Template','id':lt['LaunchTemplateId']}, sg_usage)
+                    if 'Groups' in lt_data_nic:
+                        for group in lt_data_nic['Groups']:
+                            lt_id = lt.get('LaunchTemplateId', '')
+                            check_security_group_usage(asset_ids, group, {'type':'Launch Template','id':lt_id}, sg_usage)
             elif 'SecurityGroupIds' in lt_version['LaunchTemplateData']:
                 for group in lt_version['LaunchTemplateData']['SecurityGroupIds']:
+                    lt_id = lt.get('LaunchTemplateId', '')
                     check_security_group_usage(asset_ids, group,
-                                               {'type': 'Launch Template', 'id': lt['LaunchTemplateId']}, sg_usage)
+                                               {'type': 'Launch Template', 'id': lt_id}, sg_usage)
 
 
     # Check also ASG launch configuration
     region_client = session.client('autoscaling')
     asg_paginator = region_client.get_paginator('describe_launch_configurations')
-    lconfigs = [y for x in asg_paginator.paginate() for y in x['LaunchConfigurations']]
+    lconfigs = [y for x in asg_paginator.paginate() for y in x.get('LaunchConfigurations', [])]
     for launch_cfg in lconfigs:
         if 'SecurityGroups' in launch_cfg:
             for group in launch_cfg['SecurityGroups']:
-                check_security_group_usage(asset_ids, group, {'type':'Launch Configuration','id':launch_cfg['LaunchConfigurationName']}, sg_usage)
+                launch_cfg_id = launch_cfg.get('LaunchConfigurationName', '')
+                check_security_group_usage(asset_ids, group, {'type':'Launch Configuration','id':launch_cfg_id}, sg_usage)
 
     return sg_usage
 
