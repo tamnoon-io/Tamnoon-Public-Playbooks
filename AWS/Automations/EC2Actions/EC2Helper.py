@@ -10,9 +10,6 @@ import re
 from ..Utils import utils as utils
 
 
-
-
-
 def print_help():
     text = (
         '\n'
@@ -237,17 +234,20 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
         state_path = action_parmas['statePath']
         is_roll_back = action_parmas['rollBack'] if 'rollBack' in action_parmas else None
         only_defualts = action_parmas['onlyDefaults'] if 'onlyDefaults' in action_parmas else False
-        sg_to_rb = action_parmas['sgTorollBack'] if 'sgTorollBack' in action_parmas else None
+        sg_to_rb = action_parmas['sgTorollBack'] if 'sgTorollBack' in action_parmas else 'All'
         action_type = action_parmas['actionType'] if 'actionType' in action_parmas else "Clean"
         tag_deletion = action_parmas['deletionTag'] if 'deletionTag' in action_parmas else None
 
-        return execute(is_rollback=is_roll_back, aws_session=session, region=session.region_name, only_defaults=only_defualts,
-                is_dry_run=dry_run, state_path=state_path, sg_to_rb=sg_to_rb, asset_ids=asset_ids,
-                tag_deletion=tag_deletion, action_type=action_type)
+        return execute(is_rollback=is_roll_back, aws_session=session, region=session.region_name,
+                       only_defaults=only_defualts,
+                       is_dry_run=dry_run, state_path=state_path, sg_to_rb=sg_to_rb, asset_ids=asset_ids,
+                       tag_deletion=tag_deletion, action_type=action_type)
 
     if action == 'get_usage':
-        return get_sg_usage(session=session, asset_ids=asset_ids)
-
+        only_defaults = action_parmas['onlyDefaults'] if action_parmas and 'onlyDefaults' in action_parmas else False
+        output_result = dict()
+        return get_sg_usage(session=session, output_result=output_result, only_defaults=only_defaults,
+                            asset_ids=asset_ids)
 
 
 def _get_vpcs_in_region(session):
@@ -441,7 +441,8 @@ def do_ec2_action(session, dry_run, action, asset_ids, action_parmas):
         client = session.client('ec2')
         for asset_id in asset_ids:
             logging.info(f"Going to execute - {action} for asset type - {asset_type} asset - {asset_id}")
-            http_hope = action_parmas['HttpPutResponseHopLimit'] if params and 'HttpPutResponseHopLimit' in action_parmas else -1
+            http_hope = action_parmas[
+                'HttpPutResponseHopLimit'] if params and 'HttpPutResponseHopLimit' in action_parmas else -1
             roll_back = action_parmas['rollBack'] if action_parmas and 'rollBack' in action_parmas else False
             state_path = action_parmas['statePath'] if action_parmas and 'statePath' in action_parmas else None
             do_imdsv2_action(client=client, asset_id=asset_id, dry_run=dry_run, http_hope=http_hope,
@@ -467,7 +468,7 @@ def do_disable_public_ip_assignment(client, asset_ids, dry_run, excluded_subnets
 
     # Get all the potential subnets - list of all subnets in the region
     potential_subnets = list()
-    subnets_resp  = client.describe_subnets()
+    subnets_resp = client.describe_subnets()
     potential_subnets = potential_subnets + subnets_resp['Subnets']
     while 'NextToken' in subnets_resp and subnets_resp['NextToken']:
         subnets_resp = client.describe_subnets(NextToken=subnets_resp['NextToken'])
@@ -480,15 +481,16 @@ def do_disable_public_ip_assignment(client, asset_ids, dry_run, excluded_subnets
         record = {"region": region, "vpcId": subnet['VpcId'], "subnetId": subnet['SubnetId'],
                   "MapPublicIpOnLaunch": current_setting}
 
-        #Goin to check exclusion over subnet Name or Id
+        # Goin to check exclusion over subnet Name or Id
         tag_name = subnet["Tags"]["Name"] if "Tags" in subnet and "Name" in subnet["Tags"] else None
 
         # check if subnet should be excluded or not part of the provided subnets ids
         if (excluded_subnets_regex and \
-                ((tag_name and re.search(excluded_subnets_regex, tag_name))
-                 or re.search(excluded_subnets_regex, subnet['SubnetId'])))\
+            ((tag_name and re.search(excluded_subnets_regex, tag_name))
+             or re.search(excluded_subnets_regex, subnet['SubnetId']))) \
                 or asset_ids and subnet['SubnetId'] not in asset_ids:
-            logging.info(f"Subnet - {record['subnetId']} in Vpc - {record['vpcId']} at region - {record['region']} is excluded or not part of the provided subnets ids, going to skip this one")
+            logging.info(
+                f"Subnet - {record['subnetId']} in Vpc - {record['vpcId']} at region - {record['region']} is excluded or not part of the provided subnets ids, going to skip this one")
             record['actionResult'] = "SKIP"
         else:
             if not current_setting:
@@ -524,8 +526,6 @@ def do_disable_public_ip_assignment(client, asset_ids, dry_run, excluded_subnets
     return results
 
 
-
-
 def do_subnet_action(session, dry_run, action, asset_ids, action_parmas):
     """
     This is the subnet helper function to execute automation over AWS subnet using boto3 api
@@ -538,15 +538,13 @@ def do_subnet_action(session, dry_run, action, asset_ids, action_parmas):
     """
     if action == "disable_public_ip_assignment":
         client = session.client('ec2')
-        excluded_subnets = action_parmas['excluded_subnets'] if action_parmas and 'excluded_subnets' in action_parmas else None
+        excluded_subnets = action_parmas[
+            'excluded_subnets'] if action_parmas and 'excluded_subnets' in action_parmas else None
         roll_back = action_parmas['rollBack'] if action_parmas and 'rollBack' in action_parmas else None
 
-        return do_disable_public_ip_assignment(client=client, asset_ids=asset_ids, dry_run=dry_run, excluded_subnets=excluded_subnets,
-                         roll_back=roll_back)
-
-
-
-
+        return do_disable_public_ip_assignment(client=client, asset_ids=asset_ids, dry_run=dry_run,
+                                               excluded_subnets=excluded_subnets,
+                                               roll_back=roll_back)
 
 
 def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=None):
@@ -557,15 +555,17 @@ def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=No
         return do_sg_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
                             action_parmas=action_parmas)
     if asset_type == 'vpc':
-        return do_vpc_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
+        return do_vpc_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
+                             action_parmas=action_parmas)
     if asset_type == 'ec2':
-        return do_ec2_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
+        return do_ec2_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
+                             action_parmas=action_parmas)
     if asset_type == 'subnet':
-        return do_subnet_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids, action_parmas=action_parmas)
+        return do_subnet_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
+                                action_parmas=action_parmas)
 
 
 if __name__ == '__main__':
-
 
     # TODO - Work on desc for params
     parser = argparse.ArgumentParser()
@@ -586,6 +586,8 @@ if __name__ == '__main__':
         print_help()
         sys.exit(1)
 
+    asset_type = ''
+    action = ''
     print_help()
     args = parser.parse_args()
 
@@ -594,32 +596,31 @@ if __name__ == '__main__':
     result = dict()
     try:
         params = utils.build_params(args=args)
-
-        profile = params.profile
-        action = params.action
-        asset_ids = params.assetIds
-        asset_ids = asset_ids.split(',') if asset_ids else None
-        action_params = params.actionParams
-        action_params = json.loads(action_params) if action_params and type(action_params) != dict else action_params
         dry_run = params.dryRun
         asset_type = params.type
         regions = params.regions
         aws_access_key = params.awsAccessKey
         aws_secret = params.awsSecret
         aws_session_token = params.awsSessionToken
-
+        profile = params.profile
+        action = params.action
+        asset_ids = params.assetIds
+        asset_ids = asset_ids.split(',') if asset_ids else None
+        action_params = params.actionParams
+        action_params = json.loads(action_params) if action_params and type(action_params) != dict else action_params
 
         if regions:
             logging.info(f"Going to run over {regions} - region")
             # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
-            session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+            session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret,
+                                          aws_session_token=aws_session_token)
             caller_identity = utils.get_caller_identity(session=session)
             result['caller-identity'] = caller_identity
             list_of_regions = utils.get_regions(regions_param=regions, session=session)
             for region in list_of_regions:
                 logging.info(f"Working on Region - {region}")
                 session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
-                                        aws_secret=aws_secret, aws_session_token=aws_session_token)
+                                              aws_secret=aws_secret, aws_session_token=aws_session_token)
                 action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
                                            asset_ids=asset_ids, action_parmas=action_params)
                 if action_result:
@@ -627,7 +628,8 @@ if __name__ == '__main__':
                 else:
                     result[region] = {}
         else:
-            session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret, aws_session_token=aws_session_token)
+            session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret,
+                                          aws_session_token=aws_session_token)
             caller_identity = utils.get_caller_identity(session=session)
             result['caller-identity'] = caller_identity
             logging.info(f"Going to run over the default - {session.region_name} - region")

@@ -130,14 +130,17 @@ def export_data(file_name, output, export_format='JSON'):
     :param output: The text to save
     :return:
     """
+
+    strtime=str(time.time())
     if export_format == 'JSON':
-        with open(f"{file_name}-{str(time.time())}.json", "w") as f:
+        with open(f"{file_name}-{strtime}.json", "w") as f:
             json.dump(output, f, ensure_ascii=False, indent=4)
-        logging.info(f"Save execution result to - json to path: {file_name}-{str(time.time())}.json")
+        logging.info(f"Save execution result to - json to path: {file_name}-{strtime}.json")
     if export_format == "CSV":
         import pandas as pd
-        pd.json_normalize(output).to_csv(f"{file_name}-{str(time.time())}.csv")
-        logging.info(f"Save execution result to - csv to path: {file_name}-{str(time.time())}.csv")
+        pd.json_normalize(output).to_csv(f"{file_name}-{strtime}.csv")
+        logging.info(f"Save execution result to - csv to path: {file_name}-{strtime}.csv")
+
 
 def log_setup(log_l):
     """This method setup the logging level an params

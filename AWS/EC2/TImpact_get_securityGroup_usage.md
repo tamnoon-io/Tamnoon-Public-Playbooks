@@ -35,12 +35,15 @@ After authentication via AWS API, the script execution will run on the same AWS 
           action: get_usage
           regions:  <The region/s to works on>
           dryRun: <optional dry run>
+          actionParams: <optional dictionary>
           assetIds: <list of instances to remediate>
       
-      and the execution line:
+         and the execution line:
            
-           python -m Automations.EC2Actions.EC2Helper --file <path to yaml file>
- 
+              python -m Automations.EC2Actions.EC2Helper --file <path to yaml file>
+actionParmas:
+1. onlyDefaults (Optional)(boolean) - Flag to sign if need to work only over default security groups 
+
 ## Prerequisites 
 1. AWS cretentials defined on the execution machine with permission to change SecurityGroups
 2. Python v3.6  and above + boto3 package installed ( pip install boto3)
