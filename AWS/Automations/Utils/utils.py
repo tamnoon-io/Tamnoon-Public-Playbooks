@@ -55,8 +55,9 @@ def get_regions(regions_param, session):
     if 'all' in regions_param:
         try:
             account_client = session.client('account')
-            response = account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
-            regions_list = [x["RegionName"] for x in response["Regions"]]
+            paginator = account_client.get_paginator('list_regions')
+            operation_parameters = {'RegionOptStatusContains': ['ENABLED', 'ENABLED_BY_DEFAULT']}
+            regions_list = [y["RegionName"] for x in paginator.paginate(**operation_parameters) for y in x.get('Regions', [])]
             logging.info(f"Got {len(regions_list)} regions")
             return regions_list
             #ec2_client = session.client('ec2')

@@ -1,7 +1,7 @@
 
 <img src="../../images/icons/Tamnoon.png" width="200"/>
 
-# Tamnoon Playbook: fix_subnets_w_auto_public_ips.
+# Tamnoon Playbook: Turn off auto public IP assignment
 
 ## Description
 This playbook describes how to execute Tamnoon EC2Helper automation to turn off automatic public IP address assignments.
