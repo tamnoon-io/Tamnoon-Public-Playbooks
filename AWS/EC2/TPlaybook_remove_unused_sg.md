@@ -90,7 +90,7 @@ After authentication via AWS API, the script execution will run on the same AWS 
 
              profile: <aws auth profile to use>
              type: security-group
-             action: remove_unused_sg
+             action: clean_unused_sg
              regions:  <The region/s to works on>
              actionParams: '{"statePath":<optional>, "rollBack":<optional>, "onlyDefaults":<optional>, "actionType":<optional>, "deletionTag":<optional>}'
              dryRun: <optional dry run>
