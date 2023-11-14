@@ -16,12 +16,12 @@ Need to provide to the script:
 After authentication via Azure API, the script execution will run on the same Azure storage account of those credentials defined (above)
 
 ## Playbook steps:
-1. Clone the folder Azure/Automation/Blob-Storage
+1. Clone the folder Azure/Automation/BlobStorage
 2. Get The shared account for the specific storage account you want to remediate
 3. Execute the automation from the /Azure directory
 
 
-    python3 -m Automations.Blob-Storage.Storage  --type blob-container --action remove-public  --assetIds <list of blob containers to remediate> --authParams <Dictionary with auth parameters> --actionParams <dictionary with the specific action params> --dryRun <True/False>
+    python3 -m Automations.BlobStorage.Storage  --type blob-container --action remove-public  --assetIds <list of blob containers to remediate> --authParams <Dictionary with auth parameters> --actionParams <dictionary with the specific action params> --dryRun 
     
 authParams:
 1. StorageAccountName - (Required) - The storage account name to work on.
