@@ -95,7 +95,7 @@
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlaybook_enable_versioning.md"
   },
   {
-    "id": "TBD2",
+    "id": "AWS-EBS-R-1",
     "title": "EBS Volume Encryption",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EBS_Encryption/README.md"
   },
@@ -113,20 +113,5 @@
     "id": "General-R-2",
     "title": "Clear SSH keys",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/ClearSSHText"
-  },
-  {
-    "id": "tbd1",
-    "title": "tbd1",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Automations/EC2Actions/README.md"
-  },
-  {
-    "id": "AWS-EBS-R-1",
-    "title": "EBS Volume Encryption",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/tree/main/AWS/EBS_Encryption"
-  },
-  {
-    "id": "tbd6",
-    "title": "tbd6",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/tree/main/AWS/AWSMFAEnforce"
   }
 ]
