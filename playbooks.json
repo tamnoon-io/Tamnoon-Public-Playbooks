@@ -133,5 +133,10 @@
     "id": "test-ci",
     "title": "test-ci-title",
     "url": "test-ci-url"
+  },
+  {
+    "id": "test-ci-2",
+    "title": "test-ci-title-2",
+    "url": "test-ci-url-2"
   }
 ]
