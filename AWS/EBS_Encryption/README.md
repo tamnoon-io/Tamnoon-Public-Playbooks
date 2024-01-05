@@ -10,7 +10,7 @@ You can use Amazon EBS encryption to increase the data protection of your applic
 Playbook steps:
 1. Deploy an automated process to detect unencrypted EBS volumes and facilitate their remediation:
    1. AWS Config Rule - To monitor for unencrypted EBSs in the deployed region
-   2. Aws System Manager Automation - To handle remediation for each noncompliant resource:
+   2. AWS System Manager Automation - To handle remediation for each noncompliant resource:
       1. Stop Instance
       2. Create a volume snapshot
       3. Create an encrypted copy of the unencrypted snapshot 
