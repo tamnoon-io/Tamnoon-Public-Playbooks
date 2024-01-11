@@ -17,7 +17,17 @@
   {
     "id": "AZURE-Storage-R-1",
     "title": "Remove Container public access",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Storage/TPlayBook_block_blob_container_public_access.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Storage/TPlayBook_blob_container_public_access.md"
+  },
+  {
+    "id": "AZURE-Storage-R-2",
+    "title": "Enable Logging in Storage Accounts configuration",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Storage/TPlayBook_blob_storage_account_logging.md"
+  },
+  {
+    "id": "AZURE-Storage-R-3",
+    "title": "Remove Blob Container public access configuration",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Storage/TPlayBook_storage_account_restrict_network_access.md"
   },
   {
     "id": "AWS-EC2-R-3",
