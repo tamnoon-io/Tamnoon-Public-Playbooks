@@ -85,6 +85,7 @@ def get_client(credential, client_type, client_params=None):
         "storage_management" - azure.mgmt.storage.StorageManagementClient - subscription_id (Required)
         "resource_management" - azure.mgmt.resource.ResourceManagementClient - subscription_id (Required)
         "log_analytics_management" - azure.mgmt.loganalytics.LogAnalyticsManagementClient - subscription_id (Required)
+        "network_management" - azure.mgmt.network.NetworkManagementClient - subscription_id (Required)
         "blob_service" - azure.storage.blob.BlobServiceClient - StorageAccountName (Required)
 
     """
@@ -140,6 +141,17 @@ def get_client(credential, client_type, client_params=None):
             credential=credential, subscription_id=client_params["subscription_id"]
         )
 
+    if client_type == "network_management":
+        if "subscription_id" not in client_params:
+            raise Exception(
+                f"subscription_id is required for client_type {client_type}"
+            )
+        from azure.mgmt.network import NetworkManagementClient
+
+        return NetworkManagementClient(
+            credential=credential, subscription_id=client_params["subscription_id"]
+        )
+
     if client_type == "blob_service":
         if "StorageAccountName" not in client_params:
             raise Exception(
@@ -164,21 +176,17 @@ def setup_session(auth_type, auth_params=None):
     if auth_type == "default":
         from azure.identity import DefaultAzureCredential
 
-        credential = DefaultAzureCredential(
-            exclude_interactive_browser_credential=False
-        )
+        return DefaultAzureCredential(exclude_interactive_browser_credential=False)
 
     if auth_type == "shared-key":
         if "StorageAccountName" not in auth_params or "accessKey" not in auth_params:
             raise Exception(
                 "Missing required Authentication parameters -  storage_account_name, access_account_key"
             )
-        credential = {
+        return {
             "account_name": f"{auth_params['StorageAccountName']}",
             "account_key": f"{auth_params['accessKey']}",
         }
-
-    return credential
 
 
 def export_data(file_name, output, export_format="JSON"):
@@ -218,3 +226,39 @@ def is_parent_directory(directory_path, file_path):
     output_str = file_path_match_expr.replace(directory_path_match_expr, "")
 
     return output_str.count("/") == 1
+
+
+def remove_empty_from_list(value=[]):
+    return list(filter(lambda item: item is not None, value))
+
+
+def resolve_path_backslash(s):
+    """
+    replaces all occurances of single '\\' from the string s with '\\\\'.
+    It is useful when path is supposed to be in form 'C:\\Users\\username\\Documents\\file.json'.
+    But when having the string parsed through escape-character-sensitive methods,
+    such as json.loads, it may raise error. So we first use resolve_path_backslash
+    on such strings, and then further operations can be performed on it
+
+    :param s: (Required) input string that may contain file path
+
+    :return: str
+    """
+
+    s = s.replace("\\\\", "____")
+    s = s.replace("\\", "\\\\")
+    s = s.replace("____", "\\\\")
+    return s
+
+
+def has_single_backslash(s):
+    return s.count("\\") != (s.count("\\\\") * 2)
+
+
+def validate_args(args):
+    __error_in_arg = ""
+    for arg in args:
+        if has_single_backslash(arg):
+            raise ValueError(f"{__error_in_arg} should not contain single backslash")
+        else:
+            __error_in_arg = arg

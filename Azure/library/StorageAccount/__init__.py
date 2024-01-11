@@ -85,6 +85,34 @@ def get_storage_account(
         return None
 
 
+def get_storage_accounts(
+    credential, subscription_id, resource_group_name
+) -> StorageAccount:
+    """
+    This method returns Storage Account with given Subscription id, Resource Group name and Storage Account name.
+
+    credential - (Required) Azure Credential.
+
+    subscription_id - (Required) id of Subscription.
+
+    resource_group_name - (Required) name of Resource Group.
+
+    :return: [azure.mgmt.storage.models.StorageAccount]
+    """
+    try:
+        client = get_client(
+            credential, "storage_management", dict({"subscription_id": subscription_id})
+        )
+        storage_accounts = client.storage_accounts.list_by_resource_group(
+            resource_group_name=resource_group_name
+        )
+        client.close()
+        return storage_accounts
+    except Exception as ex:
+        logging.exception(ex)
+        return None
+
+
 def get_diagnostic_setting(
     credential,
     subscription_id,
@@ -241,3 +269,175 @@ def create_diagnostic_setting(
         logging.exception(ex)
         return [None, ex]
     return [None, None]
+
+
+def populate_ip_rules(
+    ip_rules, allowed_ip_address_or_range, not_allowed_ip_address_or_range
+):
+    """
+    prepares list of dictionary of IP rules, which will update existing ip_rules by adding
+    ip_address_or_range from allowed_ip_address_or_range if it does not exists; and by
+    removing ip_address_or_range from not_allowed_ip_address_or_range if it exists.
+
+    :param ip_rules: - (Required) list of IPRule.
+
+    :param allowed_ip_address_or_range: - (Required) list of IP address or CIDR range to be
+    included in the result.
+
+    :param not_allowed_ip_address_or_range: - (Required) list of IP address or CIDR range not
+    to be included in the result.
+
+    :return: [IPRule]. list of IPRule,
+    """
+    # IP rules
+    allowed_ip_rules_to_pop = []
+    pop_ip_rules_indices = []
+
+    # check existing IP rules
+    for ip_index, ip in enumerate(ip_rules):
+        rule_found = False
+        # check existing allowed IP rules
+        for allowed_ip_index, allowed_ip in enumerate(allowed_ip_address_or_range):
+            if ip.ip_address_or_range == allowed_ip:
+                if ip.action == "Allow":
+                    # expected rule exists
+                    logging.debug(f"{allowed_ip} range found. no change needed")
+                else:
+                    # expected IP exists, but access is not allowed. set action = "Allow"
+                    logging.debug(
+                        f"{allowed_ip} range found. wrong rule {ip.action}. updating"
+                    )
+                    ip_rules[ip_index].action = "Allow"
+                # because rule exists, we do not have to create new rule.
+                # hence, remove it from allowed_ip_address_or_range
+                allowed_ip_rules_to_pop.append(allowed_ip_index)
+                rule_found = True
+
+        if not rule_found:
+            # check existing not allowed IP rules
+            for not_allowed_ip_index, not_allowed_ip in enumerate(
+                not_allowed_ip_address_or_range
+            ):
+                if ip.ip_address_or_range == not_allowed_ip:
+                    # because denied IP rule exists, we remove it from ip_rules.
+                    pop_ip_rules_indices.append(ip_index)
+
+    allowed_ip_rules_to_pop.reverse()
+    for index in allowed_ip_rules_to_pop:
+        logging.debug(
+            f"removing item at {index} index from {allowed_ip_address_or_range}"
+        )
+        allowed_ip_address_or_range.pop(index)
+
+    pop_ip_rules_indices.reverse()
+    for index in pop_ip_rules_indices:
+        logging.debug(f"removing item at {index} index from {pop_ip_rules_indices}")
+        ip_rules.pop(index)
+
+    # create new allowed ip_address_or_range rule
+    for ip_rule in allowed_ip_address_or_range:
+        rule = dict({"value": ip_rule, "action": "Allow"})
+        logging.debug(f"allow ip new rule::  {rule}")
+        ip_rules.append(rule)
+
+    return ip_rules
+
+
+def populate_vnet_rules(
+    credential,
+    vnet_rules,
+    allowed_vnets,
+    not_allowed_vnets,
+    subscription_id,
+    resource_group_name,
+):
+    """
+    prepares list of dictionary of Virtual Network rules, which will update existing
+    vnet_rules by adding virtual network rule from allowed_vnets if it does not exists;
+    and by removing virtul network rule from not_allowed_vnets if it exists.
+
+    :param vnet_rules: - (Required) list of VirtualNetworkRule.
+
+    :param allowed_vnets: - (Required) list of names of Virtual Networks to be included
+    in the result.
+
+    :param not_allowed_vnets: - (Required) list names of Virtual Networks not to be
+    included in the result.
+
+    :param subscription_id: (Required) Subscription id of VirtualNetworkRule.
+
+    :param resource_group_name: (Required) Resource Group name of VirtualNetworkRule
+
+    :return: [VirtualNetworkRule]. list of VirtualNetworkRule,
+    """
+    from ..Network import get_vnet_default_subnet_ids
+    from azure.mgmt.storage.models import (
+        VirtualNetworkRule,
+    )
+
+    pop_allowed_indices = []
+    pop_not_allowed_indices = []
+    pop_vnet_rule_indices = []
+    # check existing vnet rules
+    for index, rule in enumerate(vnet_rules):
+        rule_found = False
+        # check existing allowed vnet rules
+
+        for allowed_vnet_index, allowed_vnet in enumerate(allowed_vnets):
+            if rule.virtual_network_resource_id.split("/")[8] == allowed_vnet:
+                if rule.action == "Allow":
+                    # expected rule exists
+                    logging.debug(
+                        f"{rule.virtual_network_resource_id} allowed vnet found. no change needed"
+                    )
+
+                else:
+                    # expected vnet exists, but access is not allowed. set action = "Allow"
+                    logging.debug(
+                        f"{rule.virtual_network_resource_id} vnet found. wrong rule {rule.action}. updating"
+                    )
+                    vnet_rules[index].action = "Allow"
+                # because rule exists, we do not have to create new rule.
+                # hence, remove it from allowed_vnets
+                pop_allowed_indices.append(allowed_vnet_index)
+                rule_found = True
+
+        if not rule_found:
+            # check existing not allowed vnet rules
+            for not_allowed_vnet_index, not_allowed_vnet in enumerate(
+                not_allowed_vnets
+            ):
+                if rule.virtual_network_resource_id.split("/")[8] == not_allowed_vnet:
+                    # because denied vnet rule exists, we remove it from vnet_rules.
+                    pop_vnet_rule_indices.append(index)
+
+    pop_allowed_indices.reverse()
+    for index in pop_allowed_indices:
+        allowed_vnets.pop(index)
+
+    pop_vnet_rule_indices.reverse()
+    for index in pop_vnet_rule_indices:
+        logging.debug(f"removing vnet rule {vnet_rules[index]}")
+        vnet_rules.pop(index)
+
+    # find vnet resource ids
+    allow_vnet_subnet_resource_ids = get_vnet_default_subnet_ids(
+        credential,
+        subscription_id,
+        resource_group_name,
+        allowed_vnets,
+    )
+
+    # add rules to single list
+    vnet_rules.extend(
+        list(
+            map(
+                lambda vnet_subnet_resource_id: VirtualNetworkRule(
+                    virtual_network_resource_id=vnet_subnet_resource_id,
+                    action="Allow",
+                ),
+                allow_vnet_subnet_resource_ids,
+            )
+        )
+    )
+    return vnet_rules

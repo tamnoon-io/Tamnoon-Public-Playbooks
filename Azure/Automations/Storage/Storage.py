@@ -46,8 +46,10 @@ def print_help():
         "\t\t\t\t https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/identity/azure-identity#install-the-package"
         "\t\t\t Supported Actions:\n"
         "\t\t\t\t 1. Blob Container:"
-        "\t\t\t\t\t Remove public configuration from a Blob container - \n"
+        "\t\t\t\t\t Replace public configuration from a Blob container - \n"
         "\t\t\t\t\t Enable log analytics with diagnostics on a Blob container - \n"
+        "\t\t\t\t 2. Storage Account:"
+        "\t\t\t\t\t Restrict public network access to storage accounts by virtual networks or ip address or CIDR range - \n"
         "\n"
         "\t\t\t\t The script is based on Azrue Python SDK and documentation \n"
         "\t\t\t\t https://github.com/Azure/azure-sdk-for-python/tree/main\n"
@@ -55,8 +57,8 @@ def print_help():
         "\t\t\t Parameter Usage:\n"
         "\t\t\t\t logLevel - The logging level (optional). Default = Info\n"
         "\t\t\t\t regions (optional) -   The Azure regions to use to execute this script (specific region, list of regions, or All)\n"
-        "\t\t\t\t type -     The Azure Storage type - for example - blob-container ....\n"
-        "\t\t\t\t action -   The Azure AStorage API action to execute - (remove-public, enable-log-analytics-logs-for-azure-storage-blobs)\n"
+        "\t\t\t\t type -     The Azure Storage type - for example - blob-container, storage-account ....\n"
+        "\t\t\t\t action -   The Azure AStorage API action to execute - (remove-public, enable-log-analytics-logs-for-azure-storage-blobs, remove-public-network-access)\n"
         '\t\t\t\t actionParmas (optional)  - A key value Dictionary of action params. each " should be \\" for exampel {\\"key1\\":\\"val1\\"}\n'
         '\t\t\t\t assetIds (optional) - List of assets ids (string seperated by commas)"\n'
         '\t\t\t\t dryRun (optional) - Flag that mark if this is a dry run"\n'
@@ -162,33 +164,27 @@ def do_blob_container_actions(
     """
 
     result = dict()
-    if action == "remove-public":
-        for asset in asset_ids:
-            result[asset] = dict()
-            result[asset]["action"] = "remove-public"
-            is_roll_back = False
-            last_execution_result_path = None
-            if "rollBack" in action_parmas:
-                is_roll_back = action_parmas["rollBack"]
-                if "lastExecutionResultPath" not in action_parmas:
-                    raise "You trying to execute roll back with no 'lastExecutionResultPath' parameter, the script have to know the previous saved state"
-                last_execution_result_path = action_parmas["lastExecutionResultPath"]
-            client = utils.get_client(
+    if action == "remove-public-access-storage-containers":
+        from . import StorageAccountPublicAccess
+
+        if StorageAccountPublicAccess.validate_action_params(action_parmas):
+            is_roll_back = "rollBack" in action_parmas and action_parmas["rollBack"]
+            if is_roll_back:
+                is_roll_back = "rollBack" in action_parmas and action_parmas["rollBack"]
+            if is_roll_back:
+                return StorageAccountPublicAccess.rollback_public_access(
+                    credential=credential,
+                    dry_run=dry_run,
+                    last_execution_result_path=action_parmas["lastExecutionResultPath"],
+                )
+            return StorageAccountPublicAccess.remove_public_access(
                 credential=credential,
-                client_type="blob_service",
-                client_params=dict({"StorageAccountName": asset}),
-            )
-            return do_remove_public(
-                client=client,
-                asset=asset,
-                dry_run=dry_run,
-                is_roll_back=is_roll_back,
-                last_execution_result_path=last_execution_result_path,
-                result=result,
+                action_params=action_params,
+                is_dry_run=dry_run,
             )
 
     if action == "enable-log-analytics-logs-for-azure-storage-blobs":
-        from ..StorageAccount import StorageAccountLogging
+        from . import StorageAccountLogging
 
         if StorageAccountLogging.validate_action_params(action_parmas):
             is_roll_back = "rollBack" in action_parmas and action_parmas["rollBack"]
@@ -213,6 +209,55 @@ def do_blob_container_actions(
         return []
 
 
+def do_storage_account_actions(
+    credential,
+    action,
+    asset_ids,
+    action_params,
+    regions,
+    dry_run,
+):
+    """
+    This function execute storage account actions
+    :param credential: the AZ authentication creds
+    :param action: The action to execute
+    :param asset_ids: The specific assets
+    :param action_params: specific action's params if needed
+    :param dry_run: dry run flag
+    :return:
+    """
+    result = dict()
+    if action == "remove-public-network-access":
+        from . import StorageAccountNetworkAccess
+
+        if StorageAccountNetworkAccess.validate_action_params(action_params):
+            is_roll_back = "rollBack" in action_params and action_params["rollBack"]
+            if is_roll_back:
+                return StorageAccountNetworkAccess.rollback_restrict_network_access(
+                    credential=credential,
+                    dry_run=dry_run,
+                    last_execution_result_path=action_params["lastExecutionResultPath"],
+                )
+            return StorageAccountNetworkAccess.restrict_network_access(
+                credential=credential,
+                dry_run=dry_run,
+                subscription_ids=action_params["subscriptions"]
+                if "subscriptions" in action_params
+                else ["all"],
+                resource_group_names=action_params["resource-groups"]
+                if "resource-groups" in action_params
+                else ["all"],
+                storage_account_names=action_params["storage-accounts"]
+                if "storage-accounts" in action_params
+                else ["all"],
+                exclude_storage_account_names=action_params["exclude-storage-accounts"]
+                if "exclude-storage-accounts" in action_params
+                else [],
+                action_params=action_params,
+            )
+        return []
+
+
 def _do_action(
     credential,
     asset_type,
@@ -231,12 +276,42 @@ def _do_action(
             regions=regions,
             dry_run=dry_run,
         )
+    if asset_type == "storage-account":
+        return do_storage_account_actions(
+            credential=credential,
+            action=action,
+            asset_ids=asset_ids,
+            action_params=action_parmas,
+            regions=regions,
+            dry_run=dry_run,
+        )
     return {}
 
 
 if __name__ == "__main__":
+    modified_argv = sys.argv[1:]
+    try:
+        utils.validate_args(sys.argv)
+    except ValueError as ex:
+        if ex.__str__().__contains__("--actionParams"):
+            modified_argv = " ".join(modified_argv)
+            logging.error(ex)
+            modified_argv = utils.resolve_path_backslash(modified_argv)
+            corrected = modified_argv.split("--actionParams ")
+            corrected = corrected[1]
+            corrected = corrected.split("} ")
+            corrected = corrected[0 : corrected.__len__() - 1]
+            corrected = "}".join(corrected) + "}"
+            print(f"Using {corrected}")
+            modified_argv = modified_argv.split(" ")
+        else:
+            logging.exception(ex)
+            exit(0)
+    except Exception as ex:
+        logging.exception(ex)
+        exit(0)
+
     # TODO - Work on desc for params
-    # TODO - support rollback
     parser = argparse.ArgumentParser()
     parser.add_argument("--logLevel", required=False, type=str, default="INFO")
     parser.add_argument("--type", required=False, type=str)
@@ -257,7 +332,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print_help()
-    args = parser.parse_args()
+
+    args = parser.parse_args(modified_argv)
 
     result = None
 
@@ -320,11 +396,11 @@ if __name__ == "__main__":
     result_type = "dryrun" if dry_run else "execution"
     if params.testId:
         result["testId"] = params.testId
+    if not output_dir.endswith("/"):
+        output_dir = output_dir + "/"
     result[
         "stateFile"
     ] = f"{output_dir}Tamnoon-Azure-Storage-{asset_type if asset_type != None else ''}-{action if action != None else ''}-{result_type}-result.{output_type}"
-    if not output_dir.endswith("/"):
-        output_dir = output_dir + "/"
     utils.export_data(
         f"{output_dir}Tamnoon-Azure-Storage-{asset_type}-{action}-{result_type}-result",
         result,
