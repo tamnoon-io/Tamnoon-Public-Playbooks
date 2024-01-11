@@ -275,7 +275,7 @@ def enable_storage_logging(
     action_params - (Required) dictionary value necessary to perform this script.
 
     actionParams for enabling logging:
-    1. subscriptions - (Required) - comma separated list of subscription ids.
+    1. subscriptions - (Required) - array of subscription ids.
     2. log-analytics-workspace-name - (Required) - name of log analytics workspace, where
        you want your storage account to direct its logs to
     3. create-la-ws - (Optional) - Boolean flag to create workspace with
@@ -317,6 +317,7 @@ def enable_storage_logging(
             "Id": "",
             "Name": storage_account_name,
             "Type": "assetId",
+            "Action": "no-action",
             "CloudAccountId": "",
             "CloudProvider": "azure",
             "Region": regions,
@@ -348,6 +349,7 @@ def enable_storage_logging(
                                 "Id": subscription_id,
                                 "Name": "",
                                 "Type": "subscription",
+                                "Action": "no-action",
                                 "CloudAccountId": "",
                                 "CloudProvider": "azure",
                                 "Region": regions,
@@ -395,6 +397,7 @@ def enable_storage_logging(
                             "Id": "",
                             "Name": storage_account_name,
                             "Type": "storage_account",
+                            "Action": "no-action",
                             "CloudAccountId": "",
                             "CloudProvider": "azure",
                             "Region": regions,
