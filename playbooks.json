@@ -17,17 +17,37 @@
   {
     "id": "AZURE-Storage-R-1",
     "title": "Remove Container public access",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Storage/TPlayBook_blob_container_public_access.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/Storage/TPlayBook_blob_container_public_access.md"
   },
   {
     "id": "AZURE-Storage-R-2",
     "title": "Enable Logging in Storage Accounts configuration",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Storage/TPlayBook_blob_storage_account_logging.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/Storage/TPlayBook_blob_storage_account_logging.md"
   },
   {
     "id": "AZURE-Storage-R-3",
     "title": "Remove Blob Container public access configuration",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Storage/TPlayBook_storage_account_restrict_network_access.md"
+  },
+  {
+    "id": "AZURE-DB-R-1",
+    "title": "Enable SQL Server Auditing",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/SQLServer/TPlayBook_sql_server_auditing.md"
+  },
+  {
+    "id": "AZURE-DB-R-2",
+    "title": "SQL Server Firewall Rules",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/SQLServer/TPlayBook_sql_server_firewall.md"
+  },
+    {
+    "id": "AZURE-NETWORK-R-1",
+    "title": "Remove or Replace Security Rules",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/Network/TPlayBook_nsg_remove_or_replace_security_rules.md"
+  },
+  {
+    "id": "AZURE-NETWORK-I-1",
+    "title": "Find NSG associations",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/Network/TImpact_nsg_associations.md"
   },
   {
     "id": "AWS-EC2-R-3",
