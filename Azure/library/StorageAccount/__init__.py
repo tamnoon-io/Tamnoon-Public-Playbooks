@@ -322,6 +322,7 @@ def populate_ip_rules(
                     # because denied IP rule exists, we remove it from ip_rules.
                     pop_ip_rules_indices.append(ip_index)
 
+    allowed_ip_rules_to_pop.sort()
     allowed_ip_rules_to_pop.reverse()
     for index in allowed_ip_rules_to_pop:
         logging.debug(
@@ -329,6 +330,7 @@ def populate_ip_rules(
         )
         allowed_ip_address_or_range.pop(index)
 
+    pop_ip_rules_indices.sort()
     pop_ip_rules_indices.reverse()
     for index in pop_ip_rules_indices:
         logging.debug(f"removing item at {index} index from {pop_ip_rules_indices}")
@@ -376,7 +378,6 @@ def populate_vnet_rules(
     )
 
     pop_allowed_indices = []
-    pop_not_allowed_indices = []
     pop_vnet_rule_indices = []
     # check existing vnet rules
     for index, rule in enumerate(vnet_rules):
@@ -411,10 +412,12 @@ def populate_vnet_rules(
                     # because denied vnet rule exists, we remove it from vnet_rules.
                     pop_vnet_rule_indices.append(index)
 
+    pop_allowed_indices.sort()
     pop_allowed_indices.reverse()
     for index in pop_allowed_indices:
         allowed_vnets.pop(index)
 
+    pop_vnet_rule_indices.sort()
     pop_vnet_rule_indices.reverse()
     for index in pop_vnet_rule_indices:
         logging.debug(f"removing vnet rule {vnet_rules[index]}")

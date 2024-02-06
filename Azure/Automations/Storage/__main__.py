@@ -5,15 +5,6 @@ import json
 import logging
 import datetime
 
-___directory_depth = 2
-___relative_path = "TamnoonPlaybooks/Azure/"
-
-___splits = sys.path[0].split("/")
-___import_path = os.path.join(
-    "/".join(___splits[0 : ___splits.__len__() - ___directory_depth]), ___relative_path
-)
-sys.path.append(___import_path)
-
 
 from library.Utils import utils as utils
 
@@ -56,9 +47,12 @@ def print_help():
         "\n\n"
         "\t\t\t Parameter Usage:\n"
         "\t\t\t\t logLevel - The logging level (optional). Default = Info\n"
+        "\t\t\t\t subscriptions (optional) -   The Azure Subscription ID to use to execute this script (specific subscription ID, comma separated list of subscription IDs, or All)\n"
+        "\t\t\t\t resourceGroups (optional) -   The Azure Resource Groups to use to execute this script (specific Resource Group, comma separated list of Resource Groups, or All)\n"
+        "\t\t\t\t storageAccounts (optional) -   The Azure Storage Accounts to use to execute this script (specific Storage Account, comma separated list of Storage Accounts, or All)\n"
         "\t\t\t\t regions (optional) -   The Azure regions to use to execute this script (specific region, list of regions, or All)\n"
         "\t\t\t\t type -     The Azure Storage type - for example - blob-container, storage-account ....\n"
-        "\t\t\t\t action -   The Azure AStorage API action to execute - (remove-public, enable-log-analytics-logs-for-azure-storage-blobs, remove-public-network-access)\n"
+        "\t\t\t\t action -   The Azure AStorage API action to execute - (remove_public_access_storage_containers, enable_log_analytics_logs_for_azure_storage_blobs, remove_public_network_access)\n"
         '\t\t\t\t actionParmas (optional)  - A key value Dictionary of action params. each " should be \\" for exampel {\\"key1\\":\\"val1\\"}\n'
         '\t\t\t\t assetIds (optional) - List of assets ids (string seperated by commas)"\n'
         '\t\t\t\t dryRun (optional) - Flag that mark if this is a dry run"\n'
@@ -70,88 +64,16 @@ def print_help():
     print(text)
 
 
-def do_remove_public(
-    client, asset, dry_run, is_roll_back, last_execution_result_path, result
-):
-    """
-    This is a specific function that remove/revert public configuration over Azure Blob Container
-    :param creds:
-    :param asset:
-    :param dry_run:
-    :param is_roll_back:
-    :return:
-    """
-
-    from azure.storage.blob import BlobServiceClient
-
-    # Create a BlobServiceClient using your account name and key
-    try:
-        result[asset]["is_dry_run"] = False
-        if dry_run:
-            logging.info(
-                f"#################### This is a Dry Run ###########################"
-            )
-            result[asset]["is_dry_run"] = True
-
-        blob_service_client = client
-
-        # Get a reference to the container
-        container_client = blob_service_client.get_container_client(asset)
-        policy = container_client.get_container_access_policy()
-
-        # build the signed identifier as they are today because we want to save them as is in the set_container_access_policy call
-        concurrent_signed_identifier = dict()
-        for identifier in policy["signed_identifiers"]:
-            concurrent_signed_identifier[
-                identifier.id
-            ] = identifier.access_policy.permission
-
-        if not is_roll_back:
-            logging.info(
-                f"Going to remove public configuration from blob container - {asset}"
-            )
-            if not dry_run:
-                container_client.set_container_access_policy(
-                    public_access=None, signed_identifiers=concurrent_signed_identifier
-                )
-                result[asset]["status"] = "Success"
-                result[asset]["prev_state"] = {
-                    "pubic_access": policy["public_access"],
-                    "signed_identifiers": concurrent_signed_identifier,
-                }
-            else:
-                logging.info(
-                    f"Dry run - access policy for {asset} could changed  to None"
-                )
-        else:
-            logging.info(
-                f"This is a roll back execution - going to revert changes based on last execution file - {last_execution_result_path}"
-            )
-            result[asset]["type"] = "roll-back"
-            with open(last_execution_result_path, "r") as prev_state:
-                prev_state_json = json.load(prev_state)
-                current_asset_last_state = prev_state_json[asset]
-                container_client.set_container_access_policy(
-                    public_access=current_asset_last_state["prev_state"][
-                        "pubic_access"
-                    ],
-                    signed_identifiers=current_asset_last_state["prev_state"][
-                        "signed_identifiers"
-                    ],
-                )
-                result[asset]["status"] = "Success"
-
-        return result
-
-    except Exception as e:
-        logging.error(f"Something went wrong - {e}")
-        result[asset]["status"] = "Failed"
-        result[asset]["reason"] = f"{e}"
-        return result
-
-
 def do_blob_container_actions(
-    credential, action, asset_ids, action_parmas, regions, dry_run
+    credential,
+    action,
+    subscriptions,
+    resource_groups,
+    storage_accounts,
+    regions,
+    asset_ids,
+    action_parmas,
+    dry_run,
 ):
     """
     This function execute blob container actions
@@ -164,7 +86,7 @@ def do_blob_container_actions(
     """
 
     result = dict()
-    if action == "remove-public-access-storage-containers":
+    if action == "remove_public_access_storage_containers":
         from . import StorageAccountPublicAccess
 
         if StorageAccountPublicAccess.validate_action_params(action_parmas):
@@ -180,10 +102,15 @@ def do_blob_container_actions(
             return StorageAccountPublicAccess.remove_public_access(
                 credential=credential,
                 action_params=action_params,
+                subscriptions=subscriptions,
+                resource_groups=resource_groups,
+                storage_accounts=storage_accounts,
+                blob_containers=asset_ids,
+                regions=regions,
                 is_dry_run=dry_run,
             )
 
-    if action == "enable-log-analytics-logs-for-azure-storage-blobs":
+    if action == "enable_log_analytics_logs_for_azure_storage_blobs":
         from . import StorageAccountLogging
 
         if StorageAccountLogging.validate_action_params(action_parmas):
@@ -194,17 +121,15 @@ def do_blob_container_actions(
                     dry_run=dry_run,
                     last_execution_result_path=action_parmas["lastExecutionResultPath"],
                 )
-            result = []
-            for storage_account in asset_ids:
-                result.append(
-                    StorageAccountLogging.enable_storage_logging(
-                        credential=credential,
-                        dry_run=dry_run,
-                        regions=regions,
-                        action_params=action_parmas,
-                        storage_account_name=storage_account,
-                    )
-                )
+            result = StorageAccountLogging.enable_storage_logging(
+                credential=credential,
+                dry_run=dry_run,
+                subscriptions=subscriptions,
+                resource_group_names=resource_groups,
+                storage_accounts=storage_accounts,
+                regions=regions,
+                action_params=action_parmas,
+            )
             return result
         return []
 
@@ -212,9 +137,12 @@ def do_blob_container_actions(
 def do_storage_account_actions(
     credential,
     action,
+    subscriptions,
+    resource_groups,
+    storage_accounts,
+    regions,
     asset_ids,
     action_params,
-    regions,
     dry_run,
 ):
     """
@@ -227,7 +155,7 @@ def do_storage_account_actions(
     :return:
     """
     result = dict()
-    if action == "remove-public-network-access":
+    if action == "remove_public_network_access":
         from . import StorageAccountNetworkAccess
 
         if StorageAccountNetworkAccess.validate_action_params(action_params):
@@ -241,18 +169,10 @@ def do_storage_account_actions(
             return StorageAccountNetworkAccess.restrict_network_access(
                 credential=credential,
                 dry_run=dry_run,
-                subscription_ids=action_params["subscriptions"]
-                if "subscriptions" in action_params
-                else ["all"],
-                resource_group_names=action_params["resource-groups"]
-                if "resource-groups" in action_params
-                else ["all"],
-                storage_account_names=action_params["storage-accounts"]
-                if "storage-accounts" in action_params
-                else ["all"],
-                exclude_storage_account_names=action_params["exclude-storage-accounts"]
-                if "exclude-storage-accounts" in action_params
-                else [],
+                subscription_ids=subscriptions,
+                resource_group_names=resource_groups,
+                storage_account_names=storage_accounts,
+                regions=regions,
                 action_params=action_params,
             )
         return []
@@ -261,19 +181,37 @@ def do_storage_account_actions(
 def _do_action(
     credential,
     asset_type,
+    subscriptions,
+    resource_groups,
+    storage_accounts,
+    regions,
     dry_run,
     action,
     action_parmas,
     asset_ids,
-    regions,
 ):
     if asset_type == "blob-container":
         return do_blob_container_actions(
             credential=credential,
             action=action,
+            subscriptions=subscriptions,
+            resource_groups=resource_groups,
+            storage_accounts=storage_accounts,
+            regions=regions,
             asset_ids=asset_ids,
             action_parmas=action_parmas,
+            dry_run=dry_run,
+        )
+    if asset_type == "storage-account":
+        return do_storage_account_actions(
+            credential=credential,
+            action=action,
+            subscriptions=subscriptions,
+            resource_groups=resource_groups,
+            storage_accounts=storage_accounts,
             regions=regions,
+            asset_ids=asset_ids,
+            action_params=action_parmas,
             dry_run=dry_run,
         )
     if asset_type == "storage-account":
@@ -289,39 +227,29 @@ def _do_action(
 
 
 if __name__ == "__main__":
-    modified_argv = sys.argv[1:]
-    try:
-        utils.validate_args(sys.argv)
-    except ValueError as ex:
-        if ex.__str__().__contains__("--actionParams"):
-            modified_argv = " ".join(modified_argv)
-            logging.error(ex)
-            modified_argv = utils.resolve_path_backslash(modified_argv)
-            corrected = modified_argv.split("--actionParams ")
-            corrected = corrected[1]
-            corrected = corrected.split("} ")
-            corrected = corrected[0 : corrected.__len__() - 1]
-            corrected = "}".join(corrected) + "}"
-            print(f"Using {corrected}")
-            modified_argv = modified_argv.split(" ")
-        else:
-            logging.exception(ex)
-            exit(0)
-    except Exception as ex:
-        logging.exception(ex)
-        exit(0)
-
     # TODO - Work on desc for params
     parser = argparse.ArgumentParser()
-    parser.add_argument("--logLevel", required=False, type=str, default="INFO")
     parser.add_argument("--type", required=False, type=str)
     parser.add_argument("--action", required=False, type=str)
-    parser.add_argument("--regions", required=False, type=str, default=None)
-    parser.add_argument("--assetIds", required=False, type=str)
-    parser.add_argument("--actionParams", required=False, type=json.loads, default=None)
+
+    parser.add_argument("--subscriptions", required=False, type=str, default="all")
+    parser.add_argument("--resourceGroups", required=False, type=str, default="all")
+    parser.add_argument("--storageAccounts", required=False, type=str, default="all")
+    parser.add_argument("--regions", required=False, type=str, default="all")
+    parser.add_argument("--assetIds", required=False, type=str, default="all")
+
+    parser.add_argument(
+        "--actionParams",
+        required=False,
+        type=utils.TypeActionParams,
+        default=None,
+    )
     parser.add_argument("--authParams", required=False, type=json.loads, default=None)
+
+    parser.add_argument("--logLevel", required=False, type=str, default="INFO")
     parser.add_argument("--dryRun", dest="execute", action="store_false")
     parser.add_argument("--execute", default=False, action="store_true")
+
     parser.add_argument("--file", required=False, type=str, default=None)
     parser.add_argument("--outputType", required=False, type=str, default="json")
     parser.add_argument("--outDir", required=False, type=str, default="./")
@@ -333,7 +261,7 @@ if __name__ == "__main__":
 
     print_help()
 
-    args = parser.parse_args(modified_argv)
+    args = parser.parse_args()
 
     result = None
 
@@ -361,9 +289,18 @@ if __name__ == "__main__":
     output_type = params.outputType.upper()
     output_dir = params.outDir
 
+    subscriptions = params.subscriptions
+    subscriptions = subscriptions.split(",")
+
+    resource_groups = params.resourceGroups
+    resource_groups = resource_groups.split(",")
+
+    storage_accounts = params.storageAccounts
+    storage_accounts = storage_accounts.split(",")
+
     # todo - figure regional work
     regions = params.regions
-    regions = regions.split(",") if regions else None
+    regions = regions.split(",")
 
     utils.log_setup(params["logLevel"])
 
@@ -386,11 +323,14 @@ if __name__ == "__main__":
     result["executionResult"] = _do_action(
         credential=credential,
         asset_type=asset_type,
-        dry_run=dry_run,
         action=action,
+        subscriptions=subscriptions,
+        resource_groups=resource_groups,
+        storage_accounts=storage_accounts,
+        regions=regions,
         asset_ids=asset_ids,
         action_parmas=action_params,
-        regions=regions,
+        dry_run=dry_run,
     )
 
     result_type = "dryrun" if dry_run else "execution"
@@ -398,11 +338,14 @@ if __name__ == "__main__":
         result["testId"] = params.testId
     if not output_dir.endswith("/"):
         output_dir = output_dir + "/"
-    result[
-        "stateFile"
-    ] = f"{output_dir}Tamnoon-Azure-Storage-{asset_type if asset_type != None else ''}-{action if action != None else ''}-{result_type}-result.{output_type}"
+    result["stateFile"] = utils.export_data_filename_with_timestamp(
+        f"{output_dir}Tamnoon-Azure-Storage-{asset_type if asset_type != None else ''}-{action.replace('_', '-') if action != None else ''}-{result_type}-result.{output_type}",
+        output_type,
+    )
     utils.export_data(
-        f"{output_dir}Tamnoon-Azure-Storage-{asset_type}-{action}-{result_type}-result",
+        result["stateFile"],
         result,
         export_format=(output_type),
     )
+    print()
+    print(f"find logs in {os.path.abspath(result['stateFile'])}")

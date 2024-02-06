@@ -41,7 +41,7 @@ def get_subscriptions(credential) -> [Subscription]:
         subscriptions_client = get_client(
             credential, client_type="subscription_management"
         )
-        subscriptions = subscriptions_client.subscriptions.list()
+        subscriptions = list(subscriptions_client.subscriptions.list())
         subscriptions_client.close()
         return subscriptions
     except Exception as e:

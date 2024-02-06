@@ -87,6 +87,7 @@ def get_client(credential, client_type, client_params=None):
         "log_analytics_management" - azure.mgmt.loganalytics.LogAnalyticsManagementClient - subscription_id (Required)
         "network_management" - azure.mgmt.network.NetworkManagementClient - subscription_id (Required)
         "blob_service" - azure.storage.blob.BlobServiceClient - StorageAccountName (Required)
+        "sql_server" - azure.mgmt.sql.SqlManagementClient - subscription_id (Required)
 
     """
     if credential == None:
@@ -164,6 +165,13 @@ def get_client(credential, client_type, client_params=None):
             account_url=f"https://{client_params['StorageAccountName']}.blob.core.windows.net",
         )
 
+    if client_type == "sql_server":
+        from azure.mgmt.sql import SqlManagementClient
+
+        return SqlManagementClient(
+            credential=credential, subscription_id=client_params["subscription_id"]
+        )
+
     return None
 
 
@@ -189,6 +197,10 @@ def setup_session(auth_type, auth_params=None):
         }
 
 
+def export_data_filename_with_timestamp(file_name, export_format):
+    return f"{file_name}-{str(time.time())}.{export_format}"
+
+
 def export_data(file_name, output, export_format="JSON"):
     """
     This method responsible to export the action execution result
@@ -198,21 +210,15 @@ def export_data(file_name, output, export_format="JSON"):
     :param output: The text to save
     :return:
     """
-    file_name_with_timestamp = f"{file_name}-{str(time.time())}.{export_format}"
     if export_format == "JSON":
-        with open(file_name_with_timestamp, "w") as f:
+        with open(file_name, "w") as f:
             json.dump(output, f, ensure_ascii=False, indent=4)
-        logging.info(
-            f"Save execution result to - json to path: {file_name_with_timestamp}"
-        )
+        logging.info(f"Save execution result to - json to path: {file_name}")
     if export_format == "CSV":
         import pandas as pd
 
-        pd.json_normalize(output).to_csv(file_name_with_timestamp)
-        logging.info(
-            f"Save execution result to - csv to path: {file_name_with_timestamp}"
-        )
-    return file_name_with_timestamp
+        pd.json_normalize(output).to_csv(file_name)
+        logging.info(f"Save execution result to - csv to path: {file_name}")
 
 
 def is_parent_directory(directory_path, file_path):
@@ -252,13 +258,10 @@ def resolve_path_backslash(s):
 
 
 def has_single_backslash(s):
-    return s.count("\\") != (s.count("\\\\") * 2)
+    return s.count("\\\\") * 2 != s.count("\\")
 
 
-def validate_args(args):
-    __error_in_arg = ""
-    for arg in args:
-        if has_single_backslash(arg):
-            raise ValueError(f"{__error_in_arg} should not contain single backslash")
-        else:
-            __error_in_arg = arg
+def TypeActionParams(params):
+    if has_single_backslash(params):
+        raise Exception(f"--actionParams should not contain single backslash\n{params}")
+    return json.loads(params)

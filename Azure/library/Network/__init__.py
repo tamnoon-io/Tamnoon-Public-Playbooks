@@ -130,3 +130,34 @@ def get_vnet_default_subnet_ids(
 
     network_client.close()
     return found_subnets
+
+
+def is_network_security_group_busy(
+    network_security_group,
+):
+    print(network_security_group.as_dict().keys())
+    print(
+        f"\n\nname:{network_security_group.name}\tprovisioning_state:{network_security_group.provisioning_state}\n"
+    )
+
+    security_rules_found = (
+        network_security_group.security_rules != None
+        and network_security_group.security_rules.__len__() > 0
+    )
+
+    network_interfaces_found = (
+        network_security_group.network_interfaces != None
+        and network_security_group.network_interfaces.__len__() > 0
+    )
+
+    subnets_found = (
+        network_security_group.subnets != None
+        and network_security_group.subnets.__len__() > 0
+    )
+
+    return [
+        security_rules_found or network_interfaces_found or subnets_found,
+        security_rules_found,
+        network_interfaces_found,
+        subnets_found,
+    ]
