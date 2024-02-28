@@ -60,6 +60,10 @@ def print_help():
         '\t\t\t\t\t\t\t\t LogGroupName (OPTIONAL)\n'
         '\t\t\t\t\t\t\t\t\t The name of a new or existing CloudWatch Logs log group where Amazon EC2 publishes your flow logs.\n'
         '\t\t\t\t 4. EC2 - \n'
+        "\t\t\t\t\t\t get_imdsv1_usage\n"
+        "\t\t\t\t\t\t\t actionParams:\n"
+        "\t\t\t\t\t\t\t\t days (OPTIONAL)\n"
+        "\t\t\t\t\t\t\t\t\t The past duration to find the IMDSv1 usage before current time.  \n"
         '\t\t\t\t\t\t enforce_imdsv2\n'
         '\t\t\t\t\t\t\t actionParams:\n'
         '\t\t\t\t\t\t\t\t HttpPutResponseHopLimit (OPTIONAL)\n'
@@ -246,8 +250,190 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
     if action == 'get_usage':
         only_defaults = action_parmas['onlyDefaults'] if action_parmas and 'onlyDefaults' in action_parmas else False
         output_result = dict()
-        return get_sg_usage(session=session, output_result=output_result, only_defaults=only_defaults,
-                            asset_ids=asset_ids)
+        return get_sg_usage(
+            session=session,
+            output_result=output_result,
+            only_defaults=only_defaults,
+            asset_ids=asset_ids,
+        )
+
+
+    if action == "get_all_flow_logs":
+        from Automations.CloudWatchActions import GetAllFlowlogs
+
+        if asset_ids == None:
+            logging.error(
+                "assetIds (comma separated security groups IDs or all) are required"
+            )
+            exit(0)
+        exclude_private_ips_from_source = (
+            action_parmas["excludePrivateIPsFromSource"]
+            if action_parmas != None and "excludePrivateIPsFromSource" in action_parmas
+            else True
+        )
+        hoursback = (
+            action_parmas["hoursback"]
+            if action_parmas != None and "hoursback" in action_parmas
+            else None
+        )
+        exclude_src_ports = (
+            action_parmas["exclude_src_ports"]
+            if action_parmas != None and "exclude_src_ports" in action_parmas
+            else None
+        )
+        allgroups = GetAllFlowlogs.get_sgs(session, [region])
+        is_all_security_groups = asset_ids.__len__() == 1 and asset_ids[0] == "all"
+        interestinggroups = [
+            sg["GroupId"]
+            for reg in allgroups.keys()
+            for sg in allgroups[reg]
+            if len(
+                [
+                    1
+                    for x in sg["SGRules"]
+                    if (is_all_security_groups or x["GroupId"] in asset_ids)
+                    and x["IsEgress"] == False
+                    and x.get("CidrIpv4") == "0.0.0.0/0"
+                    and not (
+                        x.get("IpProtocol")=="tcp" 
+                        and x.get("FromPort")==443 and x.get("FromPort")==443
+                        )
+                ]
+            )
+            > 0
+        ]
+        rop = GetAllFlowlogs.regionhandler(
+            region=region,
+            session=session,
+            output_directory=output_directory,
+            hoursback=hoursback,
+            exclude_private_ips_from_source=exclude_private_ips_from_source,
+            allgroups=allgroups,
+            interestinggroups=interestinggroups,
+            exclude_src_ports=exclude_src_ports
+        )
+        if not is_all_security_groups:
+            for sg in asset_ids:
+                if sg not in interestinggroups:
+                    sgop = dict()
+                    sgop[sg] = f"No sg was found for investigating by ID {sg}"
+                    logging.info(sgop[sg])
+                    rop.append(sgop)
+        return rop
+
+    if action == "remove_or_replace_rules":
+        action_params = utils.Params(action_parmas)
+
+        if hasattr(action_params, "rollBack") and action_params.rollBack:
+            ec2client = session.client("ec2", region_name=session.region_name)
+            goutput = dict()
+            with open(action_params.statePath, "r") as state_path_json:
+                state = json.load(state_path_json)
+                if session.region_name in state:
+                    for sg_id, sg_definition in state[session.region_name].items():
+                        # print((sg_id, sg_definition), end="\n\n")
+                        goutput[sg_id] = []
+                        if not isinstance(sg_definition, dict):
+                            continue
+                        for sgr_id, sgr_definition in sg_definition.items():
+                            # print((sgr_id, sgr_definition))
+
+                            if (
+                                "rulereplaced" in sgr_definition
+                                and sgr_definition["rulereplaced"]
+                            ):
+                                for rule in sgr_definition["rulescreated"]:
+                                    ports = []
+                                    if rule["FromPort"] == rule["ToPort"]:
+                                        ports = [rule["FromPort"]]
+                                    else:
+                                        ports = [rule["FromPort"], rule["ToPort"]]
+                                    sgr = remove_ingress_rules_from_sg(
+                                        ec2client=ec2client,
+                                        sgid=sg_id,
+                                        oldcidrs=rule["CidrIpv4"],
+                                        IpProt=rule["IpProtocol"],
+                                        Ports=ports,
+                                        is_dry_run=dry_run,
+                                    )
+                                    goutput[sg_id].append(sgr)
+                            if (
+                                "ruleremoved" in sgr_definition
+                                and sgr_definition["ruleremoved"]
+                            ):
+                                sgr = create_ingress_rule_in_sg(
+                                    ec2client=ec2client,
+                                    rule=sgr_definition["inputrule"],
+                                    is_dry_run=dry_run,
+                                )
+                                goutput[sg_id].append(sgr)
+            return goutput
+        else:
+            if action_params.Ports:
+                try:
+                    Ports = [int(x) for x in action_params.Ports.split(" ")]
+                except Exception as e:
+                    print(f"Couldn't parse ports. getting error: \n {e}")
+                    exit()
+            else:
+                Ports = None
+            newCidrs = None
+            if action_params.replace:
+                if action_params.newCidrs:
+                    newCidrs = action_params.newCidrs.split(" ")
+            if action_params.oldCidrs:
+                oldCidrs = action_params.oldCidrs.split(" ")
+            else:
+                oldCidrs = None
+
+            ec2client = session.client("ec2", region_name=session.region_name)
+            goutput = dict()
+            interesting_asset_ids = list(
+                map(
+                    lambda sg: sg["GroupId"],
+                    list(
+                        filter(
+                            lambda sg: asset_ids == None
+                            or asset_ids[0] == "all"
+                            or sg["GroupId"] in asset_ids,
+                            list(
+                                ec2client.describe_security_groups()["SecurityGroups"]
+                            ),
+                        )
+                    ),
+                )
+            )
+
+            for sgid in interesting_asset_ids:
+                if action_params.replace:
+                    goutput[sgid] = replace_ingress_rules_in_sg(
+                        ec2client=ec2client,
+                        sgid=sgid,
+                        oldcidrs=oldCidrs,
+                        IpProt=action_params.IpProt,
+                        Ports=Ports,
+                        newcidrs=newCidrs,
+                        allprivate=action_params.allprivate,
+                        is_dry_run=dry_run,
+                    )
+                else:
+                    goutput[sgid] = remove_ingress_rules_from_sg(
+                        ec2client=ec2client,
+                        sgid=sgid,
+                        oldcidrs=oldCidrs,
+                        IpProt=action_params.IpProt,
+                        Ports=Ports,
+                        is_dry_run=dry_run,
+                    )
+
+            if asset_ids != None and (
+                asset_ids.__len__() == 1 and asset_ids[0] != "all"
+            ):
+                for asset_id in asset_ids:
+                    if asset_id not in interesting_asset_ids:
+                        goutput[asset_id] = "sg not found in region"
+            return goutput
+
 
 
 def _get_vpcs_in_region(session):
@@ -436,6 +622,25 @@ def do_ec2_action(session, dry_run, action, asset_ids, action_parmas):
     :param parmas:
     :return:
     """
+    
+    if action == "get_imdsv1_usage":
+        from datetime import datetime
+        from .IMDSv1 import find_imdsv1_usage
+        if asset_ids == None:
+            asset_ids = ['all']
+        days = (
+            int(action_params["days"])
+            if action_params != None and "days" in action_params
+            else 14
+        )
+
+        return find_imdsv1_usage(
+            session=session,
+            dry_run=dry_run,
+            asset_ids=asset_ids,
+            days=days,
+            duration_end_time=datetime.utcnow().ctime()
+        )
 
     if action == 'enforce_imdsv2':
         client = session.client('ec2')
@@ -581,6 +786,11 @@ if __name__ == '__main__':
     parser.add_argument('--actionParams', required=False, type=json.loads, default=None)
     parser.add_argument('--dryRun', required=False, type=bool, default=False)
     parser.add_argument('--file', required=False, type=str, default=None)
+    parser.add_argument(
+        "--outputDirectory", required=False, type=str, default=os.getcwd()
+    )
+    parser.add_argument("--outputType", required=False, type=str, default="JSON")
+    parser.add_argument("--testId", required=False, type=str)
 
     if len(sys.argv) == 1 or '--help' in sys.argv or '-h' in sys.argv:
         print_help()
@@ -608,6 +818,11 @@ if __name__ == '__main__':
         asset_ids = asset_ids.split(',') if asset_ids else None
         action_params = params.actionParams
         action_params = json.loads(action_params) if action_params and type(action_params) != dict else action_params
+        result['actionParams'] = action_params
+        result['executionType'] = asset_type
+        result['executionAction'] = action
+        if params.testId is not None:
+            result['testId'] = params.testId
 
         if regions:
             logging.info(f"Going to run over {regions} - region")
@@ -645,4 +860,10 @@ if __name__ == '__main__':
         result['status'] = 'Error'
         result['message'] = str(e)
 
-    utils.export_data(f"Tamnoon-EC2Helper-{asset_type}-{action}-execution-result", result)
+    filename = os.path.join(
+        params.outputDirectory,
+        f"Tamnoon-EC2Helper-{asset_type}-{action}-execution-result"
+        + "."
+        + params.outputType,
+    )
+    utils.export_data(filename, result)

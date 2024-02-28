@@ -1,19 +1,113 @@
 [
-  
+  {
+    "id": "AWS-IAM-R-1",
+    "title": "IAMUser MFA Enforce",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/IAM/AWSMFAEnforce"
+  },
+   {
+    "id": "AWS-IAM-R-2",
+    "title": "Deactivate IAMUser Access Key",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/IAM/TPlaybook_IAMUser_deactivate_user_access_key.md"
+  },
+  {
+    "id": "AWS-IAM-R-3",
+    "title": "Remove IAMUser console access",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/IAM/TPlaybook_IAMUser_remove_console_access.md"
+  },
   {
     "id": "AWS-IAM-R-4",
     "title": "Delete IAMUser",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/IAM/TPlaybook_delete_IAMUser.md"
   },
   {
-    "id": "AWS-IAM-R-1",
-    "title": "IAMUser MFA Enforce",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/IAM/AWSMFAEnforce"
+    "id": "AWS-EC2-I-1",
+    "title": "Get Security Groups Usage",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_get_securityGroup_usage.md"
+  },
+  {
+    "id": "AWS-EC2-I-2",
+    "title": "Investigate IMDSv1 usage",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_get_IMDSv2.md"
+  },
+  {
+    "id": "AWS-EC2-I-3",
+    "title": "Get all Flow logs",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_get_all_flowlogs.md"
+  },
+  {
+    "id": "AWS-EC2-R-1",
+    "title": "Create VPC Flow logs",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybbok_create_vpc_flowlog.md"
+  },
+  {
+    "id": "AWS-EC2-R-2",
+    "title": "Delete EBS Snapshot",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_delete_ebs_snapshot.md"
+  },
+  {
+    "id": "AWS-EC2-R-3",
+    "title": "Turn off auto public IP assignment",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_fix_subnets_w_auto_public_ips.md"
+  },
+  {
+    "id": "AWS-EC2-R-4",
+    "title": "Remove unused Security Group",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_remove_unused_sg.md"
+  },
+  {
+    "id": "AWS-EC2-R-5",
+    "title": "Use IMDs v2 instead v1",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_set_IMDSv2.md"
+  },
+  {
+    "id": "AWS-EC2-R-6",
+    "title": "Ec2 - Remove/Replace rules in Security Groups",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_remove_or_replace_sg_rules.md"
+  },
+  {
+    "id": "AWS-EBS-R-1",
+    "title": "EBS Volume Encryption",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EBS_Encryption/README.md"
+  },
+    {
+    "id": "AWS-EBS-R-2",
+    "title": "Encrypt EBS Snapshot",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPplaybook_encrypt_ebs_snapshot.md"
+  },
+  {
+    "id": "AWS-S3-R-1",
+    "title": "Enable Block Public Access",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlayBook_block_public_access.md"
+  },
+  {
+    "id": "AWS-S3-R-2",
+    "title": "S3 Deny HTTP access",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlayBook_deny_http_access.md"
   },
   {
     "id": "AWS-S3-R-3",
     "title": "Enable S3 bucket encryption",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlaybook_enable_encryption.md"
+  },
+  {
+    "id": "AWS-S3-R-4",
+    "title": "Enable S3 MFA protection",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlaybook_enable_mfa_protection.md"
+  },
+  {
+    "id": "AWS-S3-R-5",
+    "title": "Enable S3 server logging",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlaybook_enable_server_logging.md"
+  },
+  {
+    "id": "AWS-S3-R-6",
+    "title": "Enable S3 versioning",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlaybook_enable_versioning.md"
+  }, 
+  {
+    "id": "AWS-RDS-R-1",
+    "title": "RDS Enable deletion protection",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/RDS/TPlaybook_RDS_DeletionProtection.md"
   },
   {
     "id": "AZURE-Storage-R-1",
@@ -40,7 +134,17 @@
     "title": "SQL Server Firewall Rules",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/SQLServer/TPlayBook_sql_server_firewall.md"
   },
-    {
+  {
+    "id": "AZURE-DB-R-3",
+    "title": "Postgre SQL Server Firewall Rules",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/DBServer/TPlayBook_postgresql_server_firewall.md"
+  },
+  {
+    "id": "AZURE-DB-R-4",
+    "title": "MySQL Server Firewall Rules",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/DBServer/TPlayBook_mysql_server_firewall.md"
+  },
+  {
     "id": "AZURE-NETWORK-R-1",
     "title": "Remove or Replace Security Rules",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/Network/TPlayBook_nsg_remove_or_replace_security_rules.md"
@@ -49,91 +153,6 @@
     "id": "AZURE-NETWORK-I-1",
     "title": "Find NSG associations",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/Network/TImpact_nsg_associations.md"
-  },
-  {
-    "id": "AWS-EC2-R-3",
-    "title": "Turn off auto public IP assignment",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_fix_subnets_w_auto_public_ips.md"
-  },
-  {
-    "id": "AWS-EC2-I-1",
-    "title": "Get Security Groups Usage",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_get_securityGroup_usage.md"
-  },
-  {
-    "id": "AWS-S3-R-2",
-    "title": "S3 Deny HTTP access",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlayBook_deny_http_access.md"
-  },
-  {
-    "id": "AWS-EC2-R-1",
-    "title": "Create VPC Flow logs",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybbok_create_vpc_flowlog.md"
-  },
-  {
-    "id": "AWS-S3-R-5",
-    "title": "Enable S3 server logging",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlaybook_enable_server_logging.md"
-  },
-  {
-    "id": "AWS-RDS-R-1",
-    "title": "RDS Enable deletion protection",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/RDS/TPlaybook_RDS_DeletionProtection.md"
-  },
-  {
-    "id": "AWS-EC2-R-4",
-    "title": "Remove unused Security Group",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_remove_unused_sg.md"
-  },
-  {
-    "id": "AWS-S3-R-1",
-    "title": "Enable Block Public Access",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlayBook_block_public_access.md"
-  },
-  {
-    "id": "AWS-EC2-R-2",
-    "title": "Delete EBS Snapshot",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_delete_ebs_snapshot.md"
-  },
-  {
-    "id": "AWS-EBS-R-2",
-    "title": "Encrypt EBS Snapshot",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPplaybook_encrypt_ebs_snapshot.md"
-  },
-  {
-    "id": "AWS-EC2-I-2",
-    "title": "Investigate IMDSv1 usage",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_set_IMDSv2.md"
-  },
-  {
-    "id": "AWS-IAM-R-3",
-    "title": "Remove IAMUser console access",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/IAM/TPlaybook_IAMUser_remove_console_access.md"
-  },
-  {
-    "id": "AWS-S3-R-4",
-    "title": "Enable S3 MFA protection",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlaybook_enable_mfa_protection.md"
-  },
-  {
-    "id": "AWS-EC2-R-5",
-    "title": "Use IMDs v2 instead v1",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_set_IMDSv2.md"
-  },
-  {
-    "id": "AWS-S3-R-6",
-    "title": "Enable S3 versioning",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlaybook_enable_versioning.md"
-  },
-  {
-    "id": "AWS-EBS-R-1",
-    "title": "EBS Volume Encryption",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EBS_Encryption/README.md"
-  },
-  {
-    "id": "AWS-IAM-R-2",
-    "title": "Deactivate IAMUser Access Key",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/IAM/TPlaybook_IAMUser_deactivate_user_access_key.md"
   },
   {
     "id": "General-R-1",

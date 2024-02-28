@@ -88,6 +88,8 @@ def get_client(credential, client_type, client_params=None):
         "network_management" - azure.mgmt.network.NetworkManagementClient - subscription_id (Required)
         "blob_service" - azure.storage.blob.BlobServiceClient - StorageAccountName (Required)
         "sql_server" - azure.mgmt.sql.SqlManagementClient - subscription_id (Required)
+        "mysql_flexible_server" - azure.mgmt.rdbms.mysql_flexibleservers - subscription_id (Required)
+        "postgresql_flexible_server" - azure.mgmt.rdbms.postgresql_flexibleservers - subscription_id (Required)
 
     """
     if credential == None:
@@ -169,6 +171,22 @@ def get_client(credential, client_type, client_params=None):
         from azure.mgmt.sql import SqlManagementClient
 
         return SqlManagementClient(
+            credential=credential, subscription_id=client_params["subscription_id"]
+        )
+
+    if client_type == "mysql_flexible_server":
+        from azure.mgmt.rdbms.mysql_flexibleservers import MySQLManagementClient
+
+        return MySQLManagementClient(
+            credential=credential, subscription_id=client_params["subscription_id"]
+        )
+
+    if client_type == "postgresql_flexible_server":
+        from azure.mgmt.rdbms.postgresql_flexibleservers import (
+            PostgreSQLManagementClient,
+        )
+
+        return PostgreSQLManagementClient(
             credential=credential, subscription_id=client_params["subscription_id"]
         )
 
@@ -265,3 +283,45 @@ def TypeActionParams(params):
     if has_single_backslash(params):
         raise Exception(f"--actionParams should not contain single backslash\n{params}")
     return json.loads(params)
+
+
+def print_version():
+    import sys
+
+    print(f"Running on {sys.version}")
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
+
+def isip(s):
+    import ipaddress
+
+    try:
+        a = ipaddress.ip_address(s)
+        return True
+    except ValueError:
+        return False
+
+
+def isip(s):
+    import ipaddress
+
+    try:
+        a = ipaddress.ip_address(s)
+        return True
+    except ValueError:
+        return False
+
+
+def iscidr(s):
+    import ipaddress
+
+    try:
+        a = ipaddress.ip_network(s, strict=False)
+        return True
+    except ValueError:
+        return False
+
+
+def format_datetime_for_azure_resource_name(value):
+    formatted_datetime = value.strftime("%Y-%m-%d-%H-%M-%S")
+    return formatted_datetime

@@ -2,17 +2,16 @@ from time import sleep
 import json
 import logging
 
-from library.SQLServer import (
+from library.DBServer.SQLServerUtils import (
     is_devops_audit_enabled,
     get_auditing_policy,
     setup_auditing_with_log_analytics_workspace,
     setup_auditing_with_storage_account,
     setup_auditing_using_policy,
-    close_sql_client,
-    get_sql_server,
+    close_client,
+    get_server,
 )
-from library.SQLServer.SQLServerAction import SQLServerAction
-from library.SQLServer.SQLServerActionsGenerator import SQLServerActionsGenerator
+from library.DBServer.DBActionsGenerator import SQLServerActionsGenerator
 from library.BlobStorage import get_access_key
 from library.Utils.execution_result import AzureExecutionResult
 from library.Utils.rollback import serialize_rollback_actions
@@ -155,7 +154,7 @@ def enable_auditing(
                         {"subscription_id": sql_server_action.data["subscription_id"]}
                     ),
                 )
-                sql_server = get_sql_server(
+                sql_server = get_server(
                     sql_client,
                     sql_server_action.data["resource_group_name"],
                     sql_server_action.data["sql_server_name"],
@@ -207,9 +206,12 @@ def enable_auditing(
                                 storage_account_name=action_params[
                                     "storage-account-name"
                                 ],
-                                access_key=access_key
-                                if action_params["storage-auth-method"] == "access_key"
-                                else None,
+                                access_key=(
+                                    access_key
+                                    if action_params["storage-auth-method"]
+                                    == "access_key"
+                                    else None
+                                ),
                             )
                             auditing_policy_vars = vars(auditing_policy)
                             setup_result_vars = vars(setup_result)
@@ -239,7 +241,7 @@ def enable_auditing(
                         logging.error(ex, exc_info=True)
                         result.set_string_result("fail", str(ex))
                 final_result.append(result.as_dict())
-                close_sql_client(sql_client)
+                close_client(sql_client)
         else:
             result = AzureExecutionResult(
                 "",

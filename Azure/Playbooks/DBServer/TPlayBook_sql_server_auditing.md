@@ -1,12 +1,12 @@
 
 <img src="../../../images/icons/Tamnoon.png" width="200"/>
 
-# Tamnoon Playbook: Azure  - SQL Server Firewall Rules
+# Tamnoon Playbook: Azure  - Enable SQL Server Auditing
 
 
 ## Description
-This playbook describes how to execute Tamnoon Azure automation to restrict firewall rules of SQLServer public network access.
-If the SQL server has disabled its public network access, remedy will enable the same and it will add or modify or remove the firewall rules of the server as per given action parameters.
+This playbook describes how to execute Tamnoon Azure automation to enable auditing of SQL Server.
+remedy will also set auditing settings for storing audit logs in storage account given as actionParams
 
 ## Playbook steps:
 1. Clone the folder Azure
@@ -22,9 +22,9 @@ If the SQL server has disabled its public network access, remedy will enable the
 4. Execute the automation from the Azure directory
 
 ``````
-    python3 -m Automations.SQLServer \
+    python3 -m Automations.DBServer \
         --type sql-server \
-        --action restrict_firewall_rules \
+        --action enable_auditing \
         --dryRun \
         --subscription <comma separated list of subscription ID or all> \
         --resourceGroups <comma separated list of resource groups or all> \
@@ -33,27 +33,28 @@ If the SQL server has disabled its public network access, remedy will enable the
         --actionParams <dictionary with the specific action params> \
 
 ``````
-### subscription - (Optional)
+### subscription (Optional)
  list of Subscription ID. When given, remedy will find SQL servers in only specified Subscriptions. Otherwise default value is 'all', i.e., remedy will find SQL servers in all Subscriptions.
   
-### resourceGroups - (Optional)
+### resourceGroups (Optional)
  list of Resource Group names. When given, remedy will find SQL servers in only specified Resource Groups. Otherwise default value is 'all', i.e., remedy will find SQL servers in all Resource Groups available in the Subscription. 
 
-### assetIds - (Optional)
+### assetIds (Required)
  comma separated list of SQL Servers.
 
-### regions - (Optional)
+### regions (Optional)
  regions of SQL Servers. When given, remedy will find SQL servers that have location same as any of the given regions. Otherwise default value is 'all', i.e., remedy will find SQL servers regardless of its location. 
 
 ### actionParams (Required)
-   - for remedy
-      1. action - (Required) - there are two actions,
-         "disable-all" - if you want to disable public network access completely.
-         "disable-by-firewall-rules" - if you want to provide firewall rules.
-      2. remove-current-firewall-rules - (Required) - Boolean flag used to sign if you want to remove current firewall rules.
-         When set to true with action set as "disable-by-firewall-rules", remedy will first remove current rules, and then create new rules as given in the actionParams
-      3. firewall-rules - (Required if action is "disable-by-firewall-rules") - list of name, start_ip_address and end_ip_address. Here start_ip_address and end_ip_address are IP Addresses only. Using CIDR will not work.
-         example, "firewall-rules": [{"name":"rule-1", "start_ip_address" : "ip_address_1", "end_ip_address" : "ip_address_2" }]
+   -  for remedy
+      1. storage-account-name - (Required) - name of Storage Account to same logs into  
+      2. resource-group-name - (Required) - name of Resource Group of storage account  
+      3. subscription-id - (Required) - Subscription ID of storage account  
+      4. storage-auth-method - (Optional) - has two values. When ommitted from actionParams, default value used is "default"  
+         access_key - uses Access Key of storage account as means of authenticating for storing audit logs  
+         default - uses Entra ID of managed identity of SQL Server as means of authenticating for storing audit logs. For this method, few conditions should be met.
+            1. SQL Server needs to have a [Managed Identity](https://learn.microsoft.com/en-gb/entra/identity/managed-identities-azure-resources/overview). 
+            2. Storage Account's IAM access control must have given a role "Storage Blob Data Contributor" or a role with similar permissions to the managed identity of SQL Server.  
    - for rollback 
       1. rollBack - (Required) - Boolean flag to sign if this is a rollback call (required the existing of state file)
       2. lastExecutionResultPath (Required) - The path for the last execution that we want to roll-back from.
@@ -64,8 +65,8 @@ If the SQL server has disabled its public network access, remedy will enable the
     Python v3.8  and above + following packages installed.    
       azure-core
       azure-identity
-      azure-mgmt-resource
-      azure-mgmt-network
       azure-mgmt-subscription
+      azure-mgmt-resource
       azure-mgmt-sql
+      azure-mgmt-storage
 
