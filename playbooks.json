@@ -132,7 +132,7 @@
   {
     "id": "AZURE-DB-R-2",
     "title": "SQL Server Firewall Rules",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/SQLServer/TPlayBook_sql_server_firewall.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/DBServer/TPlayBook_sql_server_firewall.md"
   },
   {
     "id": "AZURE-DB-R-3",
