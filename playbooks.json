@@ -35,9 +35,15 @@
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_get_all_flowlogs.md"
   },
   {
+
+    "id": "AWS-EC2-I-4",
+    "title": "AWS Find Load Balancer Associated With EC2 Instance",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_ec2_find_load_balancer.md"
+  },
+  {
     "id": "AWS-EC2-R-1",
     "title": "AWS Create VPC Flow logs",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybbok_create_vpc_flowlog.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_create_vpc_flowlog.md"
   },
   {
     "id": "AWS-EC2-R-2",
@@ -103,7 +109,12 @@
     "id": "AWS-S3-R-6",
     "title": "AWS Enable S3 versioning",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlaybook_enable_versioning.md"
-  }, 
+  },
+  {
+    "id": "AWS-S3-I-1",
+    "title": "AWS S3 - Check Public Access Configuration.",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TImpact_check_public_access.md"
+  },
   {
     "id": "AWS-RDS-R-1",
     "title": "AWS RDS Enable deletion protection",

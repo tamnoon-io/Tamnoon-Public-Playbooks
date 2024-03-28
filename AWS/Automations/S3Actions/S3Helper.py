@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import sys
+import os
 
 import botocore.exceptions
 
@@ -277,7 +278,47 @@ def do_block_http(client, bucket_name):
     logging.info(f"Bucket policy created/updated with http deny policy")
 
 
-def _do_action(list_of_buckets, client, is_revert, action, params):
+def do_check_public_access(session, client, list_of_buckets, account_id):
+    from .S3BucketsPublicAccess import (
+        find_buckets_bpa
+    )
+
+    region_data = {}
+    try:
+        response = client.list_buckets()
+        for bucket in response["Buckets"]:
+            bucket_name = bucket["Name"]
+        buckets = list(
+            filter(
+                lambda bucket: (len(list_of_buckets) == 1 and list_of_buckets[0] == "all") or bucket["Name"] in list_of_buckets,
+                response["Buckets"]
+            )
+        )
+    except botocore.exceptions.ClientError as ce:
+        if ce.response["Error"]["Code"] == "AccessDenied":
+            logging.exception(f"This account does not have access to list the buckets.", exc_info=True)
+        else:
+            logging.exception(f"Something went wrong.", exc_info=True)
+        return {}
+    except Exception as ex:
+        logging.exception(f"Something went wrong.", exc_info=True)
+        return {}
+
+    region_data = find_buckets_bpa(session, buckets, caller_identity['Account'])
+    if len(region_data.values()) == 0:
+        if len(list_of_buckets) > 0:
+            if list_of_buckets[0] != "all":
+                for bucket_name in list_of_buckets:
+                    region_data[bucket_name] = "bucket not found"
+            else:
+                region_data['all'] = "buckets not found"
+
+
+    return region_data
+
+
+def _do_action(list_of_buckets, session, is_revert, action, params, caller_identity):
+    client = setup_client(session)
     for bucket_name in list_of_buckets:
         logging.info(f"Going to work on bucket - {bucket_name}")
         if action == 'server_logging':
@@ -324,6 +365,10 @@ def _do_action(list_of_buckets, client, is_revert, action, params):
                                    block_public_policy=block_public_policy,
                                    restrict_public_bucket=restrict_public_bucket, bucket_name=bucket_name)
 
+        if action == "check_public_access":
+            account_id = caller_identity['Account']
+            return do_check_public_access(session, client, list_of_buckets, account_id)
+
         if action == "ls":
             do_s3_ls(client=client, bucket_name=bucket_name)
 
@@ -345,6 +390,11 @@ if __name__ == '__main__':
     parser.add_argument('--actionParmas', required=False, type=str, default=None)
     parser.add_argument('--revert', required=False, type=bool, default=None)
     parser.add_argument('--regions', required=False, type=str, default=None)
+    parser.add_argument(
+        "--outputDirectory", required=False, type=str, default=os.getcwd()
+    )
+    parser.add_argument("--outputType", required=False, type=str, default="JSON")
+
 
     if len(sys.argv) == 1 or '--help' in sys.argv or '-h' in sys.argv:
         print_help()
@@ -355,7 +405,7 @@ if __name__ == '__main__':
 
     log_setup(args.logLevel)
 
-    result = None
+    result = dict()
     profile = args.profile
     aws_access_key = args.awsAccessKey
     aws_secret = args.awsSecret
@@ -368,20 +418,21 @@ if __name__ == '__main__':
     is_revert = args.revert if args.revert else False
 
     if regions:
-        logging.info(f"Going to run over {regions} - region")
         # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
         session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret,
                                       aws_session_token=aws_session_token)
         caller_identity = utils.get_caller_identity(session=session)
         result['caller-identity'] = caller_identity
-        list_of_regions = utils.get_regions(regions_param=regions, session=session)
+        cli_regions = utils.get_regions(regions, session)
+        list_of_regions = list(set().union(*[[session.region_name], cli_regions]))
+        logging.info(f"Going to run over {regions} regions including region found with profile configuration {session.region_name}")
+
         for region in list_of_regions:
             logging.info(f"Working on Region - {region}")
             session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
                                           aws_secret=aws_secret, aws_session_token=aws_session_token)
-            client = setup_client(session)
-            action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert,
-                                       action=action, params=params)
+            action_result = _do_action(list_of_buckets=list_of_buckets, session=session, is_revert=is_revert,
+                                       action=action, params=params, caller_identity=caller_identity)
             if action_result:
                 result[region] = action_result
             else:
@@ -392,10 +443,17 @@ if __name__ == '__main__':
         caller_identity = utils.get_caller_identity(session=session)
         result['caller-identity'] = caller_identity
         logging.info(f"Going to run over the default - {session.region_name} - region")
-        client = setup_client(session)
-        action_result = _do_action(list_of_buckets=list_of_buckets, client=client, is_revert=is_revert, action=action,
-                                   params=params)
+        action_result = _do_action(list_of_buckets=list_of_buckets, session=session, is_revert=is_revert, action=action,
+                                   params=params, caller_identity=caller_identity)
         if action_result:
             result[session.region_name] = action_result
         else:
             result[session.region_name] = {}
+
+    filename = os.path.join(
+        args.outputDirectory,
+        f"Tamnoon-S3Helper-{action.replace('_', '-')}-execution-result"
+        + "."
+        + args.outputType,
+    )
+    utils.export_data(filename, result)

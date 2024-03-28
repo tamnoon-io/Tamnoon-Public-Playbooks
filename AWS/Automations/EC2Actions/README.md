@@ -10,7 +10,12 @@ The Supported operations are:
         1. Snapshot - delete,ls, encrypt
         2. SecurityGroup - delete
         3. Vpc - create_flow_log
-    
+		4. ec2 - find-load-balancers
+			assetIds (REQUIRED) 
+				It can be all, or comma_separated EC2 instance ids. 
+			regions (OPTIONAL)
+				If region is provided, it gives load balancers from provided region else gives load balancers from default region. 
+
 It uses the exact AWS Authentication fallback mechanism.
 If there is no profile, use the credentials for AWS from the environment variable.
 If the AWS credentials not exists in the environment variables, use the current ./~aws configuration
