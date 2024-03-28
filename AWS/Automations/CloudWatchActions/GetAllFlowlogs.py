@@ -81,7 +81,7 @@ def get_sgs(session=None, regions=None):
 def regionhandler(
     region=None,
     session=None,
-    output_directory="",
+    output_directory=os.getcwd(),
     allgroups=[],
     interestinggroups=[],
     hoursback=NUMBER_OF_HOURS_BACK,
@@ -171,7 +171,7 @@ def getdata(
     ifs,
     region,
     hoursback,
-    output_directory=".",
+    output_directory=os.getcwd(),
     exclude_private_ips_from_source=False,
     exclude_src_ports=False
 ):

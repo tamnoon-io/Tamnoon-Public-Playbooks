@@ -49,7 +49,8 @@ After authentication via AWS API, the script execution will run on the same AWS 
    ```
    python -m Automations.EC2Actions.EC2Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --awsSessionToken <specific session token> --type security-group --action get_all_flow_logs  --regions <The region/s to works on or "all"> --assetIds <comma-separated list of SG Ids or "all"> --actionParams <see below>
    ```
-         
+    
+    Note: If "all" is entered as the value for assetIds, the automation will identify and query the logs of any security group that has some rule with "0.0.0.0/0" as the source. Other security groups will be ignored.     
 
     ### actionParams:
     The ActionParams parameter provides the automation with parameters that are specific to the action taken. In this case get_all_flow_logs. 
@@ -58,16 +59,16 @@ After authentication via AWS API, the script execution will run on the same AWS 
     '{"param1key": "param1value", "param2key": "param2value"}'
     ```
     There are two optional action parameters associated with the action get_all_flow_logs:
-    1. exclude_private_ips_from_source (Optional)(boolean) - Flag to sign if need to find flow logs to &/or from only public IPs. Default is true.
+    1. excludePrivateIPsFromSource (Optional)(boolean) - Flag to sign if need to find flow logs to &/or from only public IPs. Default is true.
     2. hoursback - (Optional)(number) - Number of past hours to search the logs from current time. Default is 720 hours (30 days)
     3. exclude_src_ports - comma-separated list of source ports that should be filtered out when fetching flowlogs (note that source ports smaller than 1024 are already filtered out)
     
     ```
-    '{"exclude_private_ips_from_source": "True", "hoursback": "720","exclude_src_ports":"8443,8444"}'
+    '{"excludePrivateIPsFromSource": "True", "hoursback": "720","exclude_src_ports":"8443,8444"}'
     ```
 ## Prerequisites 
 1. Executing the script requires a role with permissions to discover log groups and query them.
-   [logs:DescribeLogGroups, logs:DescribeLogStreams, logs:StartQuery. logs:GetQueryResults](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/permissions-reference-cwl.html)
+   [logs:DescribeLogGroups, loap-southeast-1gs:DescribeLogStreams, logs:StartQuery. logs:GetQueryResults](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/permissions-reference-cwl.html)
 
 2. Python v3.9  and above + boto3 package installed ( pip install boto3)
 

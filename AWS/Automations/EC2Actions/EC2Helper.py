@@ -214,7 +214,7 @@ def do_sg_delete(resource, asset_id, dry_run):
             raise Exception(ce)
 
 
-def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
+def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None, output_directory=os.getcwd()):
     from .SecurityGroupHelper import execute, get_sg_usage
     """
        This function is the implementation for security group actions
@@ -267,7 +267,7 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
             )
             exit(0)
         exclude_private_ips_from_source = (
-            action_parmas["excludePrivateIPsFromSource"]
+            action_parmas["excludePrivateIPsFromSource"].lower()=='true'
             if action_parmas != None and "excludePrivateIPsFromSource" in action_parmas
             else True
         )
@@ -283,25 +283,29 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None):
         )
         allgroups = GetAllFlowlogs.get_sgs(session, [region])
         is_all_security_groups = asset_ids.__len__() == 1 and asset_ids[0] == "all"
-        interestinggroups = [
-            sg["GroupId"]
-            for reg in allgroups.keys()
-            for sg in allgroups[reg]
-            if len(
-                [
-                    1
-                    for x in sg["SGRules"]
-                    if (is_all_security_groups or x["GroupId"] in asset_ids)
-                    and x["IsEgress"] == False
-                    and x.get("CidrIpv4") == "0.0.0.0/0"
-                    and not (
-                        x.get("IpProtocol")=="tcp" 
-                        and x.get("FromPort")==443 and x.get("FromPort")==443
-                        )
-                ]
-            )
-            > 0
-        ]
+        if is_all_security_groups:
+            interestinggroups = [
+                sg["GroupId"]
+                for reg in allgroups.keys()
+                for sg in allgroups[reg]
+                if len(
+                    [
+                        1
+                        for x in sg["SGRules"]
+                        if (is_all_security_groups or x["GroupId"] in asset_ids)
+                        and x["IsEgress"] == False
+                        and x.get("CidrIpv4") == "0.0.0.0/0"
+                        and not (
+                            x.get("IpProtocol")=="tcp" 
+                            and x.get("FromPort")==443 and x.get("FromPort")==443
+                            )
+                    ]
+                )
+                > 0
+            ]
+        else:
+            interestinggroups=[x for x in asset_ids if x.find("sg-")==0]
+
         rop = GetAllFlowlogs.regionhandler(
             region=region,
             session=session,
@@ -654,7 +658,13 @@ def do_ec2_action(session, dry_run, action, asset_ids, action_parmas):
                              roll_back=roll_back, state_path=state_path)
         return {}
 
-    return {'error': 'no action found'}
+    
+    if action == 'find-load-balancers':
+        from .LoadBalancers import find_load_balancers
+
+        return find_load_balancers(session, asset_ids)
+
+    return {"error": "no action found"}
 
 
 def do_disable_public_ip_assignment(client, asset_ids, dry_run, excluded_subnets, roll_back):
@@ -752,13 +762,13 @@ def do_subnet_action(session, dry_run, action, asset_ids, action_parmas):
                                                roll_back=roll_back)
 
 
-def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=None):
+def _do_action(asset_type, session, dry_run, action, asset_ids, action_parmas=None, output_directory=os.getcwd()):
     if asset_type == 'snapshot':
         return do_snapshot_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
                                   action_parmas=action_parmas)
     if asset_type == 'security-group':
         return do_sg_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
-                            action_parmas=action_parmas)
+                            action_parmas=action_parmas, output_directory=output_directory)
     if asset_type == 'vpc':
         return do_vpc_action(session=session, dry_run=dry_run, action=action, asset_ids=asset_ids,
                              action_parmas=action_parmas)
@@ -837,7 +847,7 @@ if __name__ == '__main__':
                 session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
                                               aws_secret=aws_secret, aws_session_token=aws_session_token)
                 action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
-                                           asset_ids=asset_ids, action_parmas=action_params)
+                                           asset_ids=asset_ids, action_parmas=action_params, output_directory=params.outputDirectory)
                 if action_result:
                     result[region] = action_result
                 else:
@@ -850,7 +860,7 @@ if __name__ == '__main__':
             logging.info(f"Going to run over the default - {session.region_name} - region")
             action_result = _do_action(asset_type=asset_type, session=session, dry_run=dry_run, action=action,
                                        asset_ids=asset_ids,
-                                       action_parmas=action_params)
+                                       action_parmas=action_params, output_directory=params.outputDirectory)
             if action_result:
                 result[session.region_name] = action_result
             else:
