@@ -8,7 +8,7 @@ import os
 import json
 
 
-
+DEFAULT_REGION = 'us-east-1'
 
 
 class Params(dict):
@@ -50,7 +50,6 @@ def get_regions(regions_param, session):
     :param session: boto3 ec2 session
     :return:
     """
-    default_region = 'us-east-1'
     logging.info(f"Get regions")
     if 'all' in regions_param:
         try:
@@ -66,8 +65,8 @@ def get_regions(regions_param, session):
             #    regions_list.append(region['RegionName'])
 
         except botocore.exceptions.NoRegionError as nr:
-            logging.warning(f"falling back to default region - {default_region}")
-            account_client = session.client('account', region_name=default_region)
+            logging.warning(f"falling back to default region - {DEFAULT_REGION}")
+            account_client = session.client('account', region_name=DEFAULT_REGION)
             response = account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
             regions_list = [x["RegionName"] for x in response["Regions"]]
             return regions_list
@@ -86,7 +85,10 @@ def setup_session(profile=None, region=None, aws_access_key=None, aws_secret=Non
     if profile:
         if region:
             return boto3.Session(profile_name=profile, region_name=region)
-        return boto3.Session(profile_name=profile)
+        session = boto3.Session(profile_name=profile)
+        if not session.region_name:
+            session = boto3.Session(profile_name=profile, region_name=DEFAULT_REGION)
+        return session
     if aws_access_key and aws_secret:
         if region:
             if aws_session_token:
@@ -94,8 +96,15 @@ def setup_session(profile=None, region=None, aws_access_key=None, aws_secret=Non
                                      aws_secret_access_key=aws_secret, aws_session_token=aws_session_token)
             return boto3.Session(region_name=region, aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
         if aws_session_token:
-            return boto3.Session(aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret, aws_session_token=aws_session_token)
-        return boto3.Session(aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
+            session = boto3.Session(aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret, aws_session_token=aws_session_token)
+            if not session.region_name:
+                session = boto3.Session(region_name=DEFAULT_REGION, aws_access_key_id=aws_access_key,
+                                     aws_secret_access_key=aws_secret, aws_session_token=aws_session_token)
+            return session
+        session = boto3.Session(aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
+        if not session.region_name:
+            session = boto3.Session(region_name=DEFAULT_REGION, aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret)
+        return session
     if region:
         return boto3.Session(region_name=region)
     return boto3.Session()
