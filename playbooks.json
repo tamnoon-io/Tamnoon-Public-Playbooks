@@ -22,53 +22,64 @@
   {
     "id": "AWS-EC2-I-1",
     "title": "AWS Get Security Groups Usage",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_get_securityGroup_usage.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TImpact_security_group_get_usage.md"
   },
   {
     "id": "AWS-EC2-I-2",
     "title": "AWS Investigate IMDSv1 usage",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_get_IMDSv2.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TImpact_ec2_get_imdsv1_usage.md"
   },
   {
     "id": "AWS-EC2-I-3",
     "title": "AWS Get all Flow logs",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_get_all_flowlogs.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TImpact_security_group_get_all_flow_logs.md"
   },
   {
 
     "id": "AWS-EC2-I-4",
     "title": "AWS Find Load Balancer Associated With EC2 Instance",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TImpact_ec2_find_load_balancer.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TImpact_ec2_find_load_balancers.md"
+  },
+  {
+
+    "id": "AWS-EC2-I-5",
+    "title": "List EBS Snapshots",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TPlaybook_snapshots_list.md"
   },
   {
     "id": "AWS-EC2-R-1",
     "title": "AWS Create VPC Flow logs",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_create_vpc_flowlog.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TPlaybook_vpc_create_flow_log.md"
   },
   {
     "id": "AWS-EC2-R-2",
     "title": "AWS Delete EBS Snapshot",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_delete_ebs_snapshot.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TPlaybook_snapshot_delete.md"
   },
   {
     "id": "AWS-EC2-R-3",
     "title": "AWS Turn off auto public IP assignment",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_fix_subnets_w_auto_public_ips.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TPlaybook_subnet_disable_public_ip_assignment.md"
   },
   {
     "id": "AWS-EC2-R-4",
     "title": "AWS Remove unused Security Group",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_remove_unused_sg.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TPlaybook_security_group_delete.md"
   },
   {
     "id": "AWS-EC2-R-5",
     "title": "AWS Use IMDs v2 instead v1",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_set_IMDSv2.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TPlaybook_ec2_enforce_imdsv2.md"
   },
   {
     "id": "AWS-EC2-R-6",
     "title": "AWS Ec2 - Remove/Replace rules in Security Groups",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_remove_or_replace_sg_rules.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TPlaybook_security_group_remove_or_replace_rules.md"
+  },
+  {
+    "id": "AWS-EC2-R-7",
+    "title": "AWS Ec2 - Remove rules from unused Security Groups",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TPlaybook_security_group_clean_unused.md"
   },
   {
     "id": "AWS-EBS-R-1",
@@ -78,7 +89,7 @@
     {
     "id": "AWS-EBS-R-2",
     "title": "AWS Encrypt EBS Snapshot",
-    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPplaybook_encrypt_ebs_snapshot.md"
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/Playbooks/EC2Actions/TPlaybook_snapshot_encrypt.md"
   },
   {
     "id": "AWS-S3-R-1",
@@ -154,6 +165,16 @@
     "id": "AZURE-DB-R-4",
     "title": "Azure MySQL Server Firewall Rules",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/DBServer/TPlayBook_mysql_server_firewall.md"
+  },
+  {
+    "id": "AZURE-DB-R-5",
+    "title": "Azure MySQL Server Auditing",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/DBServer/TPlayBook_mysql_server_auditing.md"
+  },
+  {
+    "id": "AZURE-DB-R-6",
+    "title": "Azure Postgres Server Auditing",
+    "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Playbooks/DBServer/TPlayBook_postgresql_server_auditing.md"
   },
   {
     "id": "AZURE-NETWORK-R-1",

@@ -260,7 +260,7 @@ def restrict_firewall_rules(
                 server_action.data["subscription_id"]
                 server_action.data["resource_group_name"]
                 server_action.data["regions"]
-                server_action.data[f"{server_type}_server_name"]
+                server_action.data[f"{server_type.value}_server_name"]
 
                 server_client = get_server_client(
                     credential, server_type, server_action.data["subscription_id"]
@@ -269,7 +269,7 @@ def restrict_firewall_rules(
                 server = package.get_server(
                     server_client,
                     server_action.data["resource_group_name"],
-                    server_action.data[f"{server_type}_server_name"],
+                    server_action.data[f"{server_type.value}_server_name"],
                 )
                 logging.debug(server)
                 is_public_network_access_enabled = (

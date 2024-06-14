@@ -1,4 +1,3 @@
-import sys
 import os
 import logging
 from .GetCloudWatchData import get_cloudwatch_data
@@ -21,7 +20,8 @@ def get_sg(session=None, region=None):
     secgroups = [y for x in paginator.paginate() for y in x["SecurityGroups"]]
     if len(secgroups) > 0:
         paginator = ec2.get_paginator("describe_network_interfaces")
-        ENIs = [y for x in paginator.paginate() for y in x["NetworkInterfaces"]]
+        ENIs = [y for x in paginator.paginate()
+                for y in x["NetworkInterfaces"]]
         secgrouprefs = ec2.describe_security_group_references(
             GroupId=[x["GroupId"] for x in secgroups]
         )["SecurityGroupReferenceSet"]
@@ -47,7 +47,8 @@ def get_sg(session=None, region=None):
                 for x in secgrouprefs
                 if x["GroupId"] == sg["GroupId"]
             ]
-            soutput["SGRules"] = [x for x in sgRules if x["GroupId"] == sg["GroupId"]]
+            soutput["SGRules"] = [
+                x for x in sgRules if x["GroupId"] == sg["GroupId"]]
             ifs = []
             for inf in ENIs:
                 if sg["GroupId"] in [x["GroupId"] for x in inf["Groups"]]:
@@ -79,8 +80,7 @@ def get_sgs(session=None, regions=None):
 
 
 def regionhandler(
-    region=None,
-    session=None,
+    session,
     output_directory=os.getcwd(),
     allgroups=[],
     interestinggroups=[],
@@ -88,15 +88,17 @@ def regionhandler(
     exclude_private_ips_from_source=False,
     exclude_src_ports=False
 ):
+    region = session.region_name
     logging.info(
-        "the following groups are intereesting: \n"
+        "the following groups are interesting: \n"
         + (
             "\n".join(interestinggroups) + " out of " + "\n".join(allgroups)
             if interestinggroups.__len__() > 0
             else str(None)
         )
     )
-    relevantsgs = [x for x in allgroups[region] if x["GroupId"] in interestinggroups]
+    relevantsgs = [x for x in allgroups[region]
+                   if x["GroupId"] in interestinggroups]
     ec2 = session.client("ec2", region_name=region)
     paginator = ec2.get_paginator("describe_flow_logs")
     Flowlogs = [y for x in paginator.paginate() for y in x["FlowLogs"]]
@@ -108,7 +110,8 @@ def regionhandler(
         ifs = [x["NetworkInterfaceId"] for x in sg["AssociatedInterfaces"]]
         vpc = sg["VpcId"]
         if len(ifs) == 0:
-            logging.info(f"{sg['GroupId']} protects no interfaces. Nothing to check")
+            logging.info(
+                f"{sg['GroupId']} protects no interfaces. Nothing to check")
             sgop[
                 sg["GroupId"]
             ] = f"{sg['GroupId']} protects no interfaces. Nothing to check"
@@ -178,8 +181,10 @@ def getdata(
     if hoursback == None:
         hoursback = NUMBER_OF_HOURS_BACK
     query = flowlog_query_builder(
+        session=session,
         interface_ids=" ".join(ifs),
-        exclude_private_ips_from_source=exclude_private_ips_from_source,exclude_src_ports=exclude_src_ports
+        exclude_private_ips_from_source=exclude_private_ips_from_source,
+        exclude_src_ports=exclude_src_ports
     )
     output = get_cloudwatch_data(
         session=session,

@@ -5,216 +5,181 @@ import json
 import logging
 import datetime
 
-
 from library.Utils import utils as utils
 
+try:
+    from Azure.Automations.Network.help_jsons_data import *
+except ModuleNotFoundError:
+    network_security_group_remove_or_replace_security_rules = dict()
+    network_security_group_find_associations = dict()
+    common_json_data = dict()
 
-def print_help():
-    text = (
-        "\n"
-        "\n "
-        """
 
-\t\t\t ___                                                                                           
-\t\t\t(   )                                                                            .-.           
-\t\t\t | |_       .---.   ___ .-. .-.    ___ .-.     .--.     .--.    ___ .-.         ( __)   .--.   
-\t\t\t(   __)    / .-, \ (   )   '   \  (   )   \   /    \   /    \  (   )   \        (''")  /    \  
-\t\t\t | |      (__) ; |  |  .-.  .-. ;  |  .-. .  |  .-. ; |  .-. ;  |  .-. .         | |  |  .-. ; 
-\t\t\t | | ___    .'`  |  | |  | |  | |  | |  | |  | |  | | | |  | |  | |  | |         | |  | |  | | 
-\t\t\t | |(   )  / .'| |  | |  | |  | |  | |  | |  | |  | | | |  | |  | |  | |         | |  | |  | | 
-\t\t\t | | | |  | /  | |  | |  | |  | |  | |  | |  | |  | | | |  | |  | |  | |         | |  | |  | | 
-\t\t\t | ' | |  ; |  ; |  | |  | |  | |  | |  | |  | '  | | | '  | |  | |  | |   .-.   | |  | '  | | 
-\t\t\t ' `-' ;  ' `-'  |  | |  | |  | |  | |  | |  '  `-' / '  `-' /  | |  | |  (   )  | |  '  `-' / 
-\t\t\t  `.__.   `.__.'_. (___)(___)(___)(___)(___)  `.__.'   `.__.'  (___)(___)  `-'  (___)  `.__.'  
-        """
-        "\t\t Welcome To Tamnoon Azure Network - The script that will help you with your Network Actions \n"
-        "\n"
-        "\t\t\t Dependencies:\n"
-        "\t\t\t\t \n"
-        "\t\t\t Authentication:\n"
-        "\t\t\t\t The script support the fallback mechanism auth based on azure-identity DefaultAzureCredential \n"
-        "\t\t\t\t https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/identity/azure-identity#install-the-package"
-        "\t\t\t Supported Actions:\n"
-        "\t\t\t\t 1. Network Security Group:"
-        "\t\t\t\t\t Remove or Replace security rules from a Network Security Group - \n"
-        "\n"
-        "\t\t\t\t The script is based on Azrue Python SDK and documentation \n"
-        "\t\t\t\t https://github.com/Azure/azure-sdk-for-python/tree/main\n"
-        "\n\n"
-        "\t\t\t Parameter Usage:\n"
-        "\t\t\t\t logLevel - The logging level (optional). Default = Info\n"
-        "\t\t\t\t subscription (optional) - The Azure Subscription ID to use to execute this script (specific subscription)\n"
-        "\t\t\t\t resourceGroups (optional) - The Azure Resource Groups to use to execute this script (specific resource group, list of resource groups - string seperated by commas, or all. default is all)\n"
-        "\t\t\t\t regions (optional) - The Azure regions to use to execute this script (specific region, list of regions - string seperated by commas, or all. default is all)\n"
-        "\t\t\t\t vnets (optional) - The Virtual Networks to use to execute this script (specific virtual network, list of virtual networks - string seperated by commas, or all. default is all)\n"
-        "\t\t\t\t assetIds (optional) - List of assets ids (string seperated by commas)\n"
-        "\t\t\t\t type - The Azure Resource type - for example - network-security-group\n"
-        "\t\t\t\t action - The Azure Network API action to execute - (remove_or_replace_security_rules)\n"
-        '\t\t\t\t actionParmas (optional)  - A key value Dictionary of action params. each " should be \\" for exampel {\\"key1\\":\\"val1\\"}\n'
-        '\t\t\t\t dryRun (optional) - Flag that mark if this is a dry run"\n'
-        '\t\t\t\t file (optional) - the path to a yml file that contain all the script input parameters"\n'
-        '\t\t\t\t outputType (optional) - the type of output of script exucution. available options are json (default) and csv "\n'
-        '\t\t\t\t outDir (optional) - the path to store output of script exucution. default is current working directory "\n'
-        '\t\t\t\t testId (optional) - to be used when testing the multiple results of remedy"\n'
-        "\n\n"
+def do_network_security_group_action_remove_or_replace_security_rules(credential,
+                                                                      action,
+                                                                      subscription,
+                                                                      resource_groups,
+                                                                      vnets,
+                                                                      asset_ids,
+                                                                      action_params,
+                                                                      regions,
+                                                                      dry_run, ):
+    from .RemoveOrReplaceSecurityRules import (
+        remove_or_replace_security_rules_from_nsgs,
+        rollback_remove_or_replace_security_rules_from_nsgs,
     )
-    print(text)
 
-
-def do_network_security_group_actions(
-    credential,
-    action,
-    subscription,
-    resource_groups,
-    vnets,
-    asset_ids,
-    action_params,
-    regions,
-    dry_run,
-):
-    """
-    This function executes network security group actions
-    :param credential: the AZ authentication creds
-    :param action: The action to execute
-    :param subscription: subscription ID
-    :param resource_groups: list of resource groups' names
-    :param vnets: list of virtual networks' names
-    :param asset_ids: The specific assets
-    :param action_params: specific action's params if needed
-    :param dry_run: dry run flag
-    :return:
-    """
-    if action == "remove_or_replace_security_rules":
-        from .RemoveOrReplaceSecurityRules import (
-            remove_or_replace_security_rules_from_nsgs,
-            rollback_remove_or_replace_security_rules_from_nsgs,
-        )
-
-        is_roll_back = "rollBack" in action_params and action_params["rollBack"]
-        if is_roll_back:
-            return rollback_remove_or_replace_security_rules_from_nsgs(
-                credential=credential,
-                dry_run=dry_run,
-                last_execution_result_path=action_params["lastExecutionResultPath"],
-            )
-
-        return remove_or_replace_security_rules_from_nsgs(
+    is_roll_back = "rollBack" in action_params and action_params["rollBack"]
+    if is_roll_back:
+        return rollback_remove_or_replace_security_rules_from_nsgs(
             credential=credential,
-            subscription_id=subscription,
-            resource_group_names=resource_groups,
-            network_security_group_names=asset_ids,
-            regions=regions,
-            action_params=action_params,
-            is_dry_run=dry_run,
-        )
-    if action == "find_associations":
-        from .NSGAssociations import NSGAssociations
-
-        nsga = NSGAssociations(params)
-        nsga.populate()
-        return nsga.as_dict()
-
-
-def _do_action(
-    credential,
-    asset_type,
-    subscription,
-    resource_groups,
-    vnets,
-    dry_run,
-    action,
-    action_parmas,
-    asset_ids,
-    regions,
-):
-    if asset_type == "network-security-group":
-        return do_network_security_group_actions(
-            credential=credential,
-            action=action,
-            subscription=subscription,
-            resource_groups=resource_groups,
-            vnets=vnets,
-            asset_ids=asset_ids,
-            action_params=action_parmas,
-            regions=regions,
             dry_run=dry_run,
+            last_execution_result_path=action_params["lastExecutionResultPath"],
         )
-    return {}
+    return remove_or_replace_security_rules_from_nsgs(
+        credential=credential,
+        subscription_id=subscription,
+        resource_group_names=resource_groups,
+        network_security_group_names=asset_ids,
+        vnets=vnets,
+        regions=regions,
+        action_params=action_params,
+        is_dry_run=dry_run,
+    )
+
+
+def do_network_security_group_action_find_associations(credential,
+                                                       action,
+                                                       subscription,
+                                                       resource_groups,
+                                                       vnets,
+                                                       asset_ids,
+                                                       action_params,
+                                                       regions,
+                                                       dry_run, ):
+    from .NSGAssociations import NSGAssociations
+    nsga = NSGAssociations(params)
+    nsga.populate()
+    return nsga.as_dict()
+
+
+def common_args(parser, args_json_data, json_data):
+    parser.add_argument("--subscription", required=False, metavar="", help=args_json_data.get("subscription"),
+                        type=str)
+    parser.add_argument("--resourceGroups", required=False, metavar="", help=args_json_data.get("resourceGroups"),
+                        type=str, default="all")
+    parser.add_argument("--regions", required=False, metavar="", help=args_json_data.get("regions"), type=str,
+                        default="all")
+    parser.add_argument("--assetIds", required=False, metavar="", help=args_json_data.get("assetIds"), type=str,
+                        default="all")
+
+    parser.add_argument("--logLevel", required=False, metavar="", type=str, default="INFO",
+                        help=args_json_data.get("logLevel"))
+    parser.add_argument("--dryRun", required=False, help=args_json_data.get("dryRun"), action="store_true",
+                        default=False)
+
+    parser.add_argument("--file", required=False, metavar="", help=args_json_data.get("file"), type=str, default=None)
+    parser.add_argument("--outputType", required=False, metavar="", help=args_json_data.get("outputType"), type=str,
+                        default="json")
+    parser.add_argument("--outDir", required=False, metavar="", help=args_json_data.get("outDir"), type=str,
+                        default="./")
+    parser.add_argument("--testId", required=False, metavar="", type=str, help=args_json_data.get("testId"))
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--type", required=False, type=str)
-    parser.add_argument("--action", required=False, type=str)
 
-    parser.add_argument("--subscription", required=True, type=str)
-    parser.add_argument("--resourceGroups", required=False, type=str, default="all")
-    parser.add_argument("--storage-accounts", required=False, type=str, default="all")
-    parser.add_argument("--regions", required=False, type=str, default="all")
-    parser.add_argument("--vnets", required=False, type=str, default="all")
-    parser.add_argument("--assetIds", required=False, type=str)
+    parser_usage = common_json_data.get("usage", {}).get("Network", "python3 -m Automations.Network")
+    usage = parser_usage + " [-h]"
 
-    parser.add_argument(
-        "--actionParams", required=False, type=utils.TypeActionParams, default=None
-    )
-    parser.add_argument("--authParams", required=False, type=json.loads, default=None)
-
-    parser.add_argument("--logLevel", required=False, type=str, default="INFO")
-    parser.add_argument("--dryRun", dest="execute", action="store_false")
-    parser.add_argument("--execute", default=False, action="store_true")
-
-    parser.add_argument("--file", required=False, type=str, default=None)
-    parser.add_argument("--outputType", required=False, type=str, default="json")
-    parser.add_argument("--outDir", required=False, type=str, default="./")
-    parser.add_argument("--testId", required=False, type=str)
-
-    if len(sys.argv) == 1 or "--help" in sys.argv or "-h" in sys.argv:
-        print_help()
+    if len(sys.argv) == 2 and ("--help" in sys.argv or "-h" in sys.argv):
+        utils.print_help_valid_types(common_json_data.get("help", {}).get("Network"),
+                                     usage)
         sys.exit(1)
 
-    print_help()
-    try:
-        args = parser.parse_args()
-    except Exception as ex:
-        ex
+    parser = argparse.ArgumentParser(usage=parser_usage)
 
+    type_subparsers = parser.add_subparsers(title="type", metavar="")
+    network_security_group_parser = type_subparsers.add_parser(name='network-security-group',
+                                                               formatter_class=argparse.RawTextHelpFormatter)
+
+    # Remove the default "Positional Arguments" section
+    network_security_group_parser._positionals.title = None
+
+    # This dictionary links help content with corresponding actions for the type 'network-security-group'.
+    # For example, for the action 'remove_or_replace_security_rules',
+    # the associated help content is fetched from 'network_security_group_remove_or_replace_security_rules.get("help")'.
+    nsg_help = {
+        "remove_or_replace_security_rules":
+            network_security_group_remove_or_replace_security_rules.get("help"),
+        "find_associations":
+            network_security_group_find_associations.get("help")
+    }
+
+    nsg_actions = network_security_group_parser.add_subparsers(metavar="",
+                                                               description=utils.type_help(
+                                                                   nsg_help))
+
+    nsg_action_remove_or_replace_security_rules = nsg_actions.add_parser(
+        name="remove_or_replace_security_rules")
+    nsg_action_remove_or_replace_security_rules._optionals.title = 'arguments'
+
+    nsg_action_find_associations = nsg_actions.add_parser(
+        name="find_associations")
+    nsg_action_find_associations._optionals.title = 'arguments'
+
+    action = sys.argv[2]
+    if action == "remove_or_replace_security_rules":
+        common_args(nsg_action_remove_or_replace_security_rules,
+                    network_security_group_remove_or_replace_security_rules.get("cli_args", {}),
+                    common_json_data)
+        nsg_action_remove_or_replace_security_rules.add_argument(
+            "--actionParams", required=False, metavar="", help=network_security_group_remove_or_replace_security_rules.get("cli_args", {}).get("actionParams"),
+            type=utils.TypeActionParams, default=None
+        )
+        nsg_action_remove_or_replace_security_rules.add_argument("--vnets", required=False, metavar="",
+                                                                 help=
+                                                                 network_security_group_remove_or_replace_security_rules.get("cli_args", {}).get("vnets"), type=str,
+                                                                 default="all")
+    else:
+        if action == "find_associations":
+            common_args(nsg_action_find_associations, network_security_group_find_associations.get("cli_args", {}),
+                        common_json_data)
+
+    args = parser.parse_args()
     result = None
 
     params = utils.build_params(args=args)
+    asset_ids = params.assetIds.split(",") if args.file is None else params.get('assetIds', ['all'])
 
-    action = params.action
-    asset_ids = params.assetIds
-    asset_ids = asset_ids.split(",") if asset_ids else None
-
-    action_params = params.actionParams
+    action_params = params.actionParams if args.file is None else params.get('actionParams', {})
     auth_params = None
-    if params.authParams != None:
-        auth_params = (
-            json.loads(params.authParams)
-            if params.authParams and type(params.authParams) != dict
-            else params.authParams
-        )
+
     action_params = (
         json.loads(action_params)
         if action_params and type(action_params) != dict
-        else action_params
+        else params.get('actionParams', {})
     )
-    dry_run = not params.execute
-    asset_type = params.type
+    dry_run = params.get('dryRun', False)
+    asset_type = sys.argv[1]
     output_type = params.outputType.upper()
-    output_dir = params.outDir
+    output_dir = params.outDir if args.file is None else params.get('outDir', './')
 
-    subscription = params.subscription
+    subscription = params.get('subscription') if args.file is not None else params.subscription
 
-    resource_groups = params.resourceGroups
-    resource_groups = resource_groups.split(",")
+    resource_groups = params.get('resourceGroups',
+                                 ['all']) if args.file is not None else params.resourceGroups.split(",")
 
     # todo - figure regional work
-    regions = params.regions
-    regions = regions.split(",")
+    regions = params.get('regions', ['all']) if args.file is not None else params.regions.split(",")
 
-    vnets = params.vnets
-    vnets = vnets.split(",")
+    utils.log_setup(params["logLevel"])
+
+    if params.get('vnets') is None:
+        vnets = ['all']
+    elif args.file is None:
+        vnets = params['vnets'].split(",")
+    else:
+        vnets = params.get('vnets', ['all'])
 
     utils.log_setup(params["logLevel"])
 
@@ -229,23 +194,28 @@ if __name__ == "__main__":
     )
 
     credential = utils.setup_session("default")
-    # utils.setup_session("credential", auth_params)
-    result["executionResult"] = _do_action(
-        credential=credential,
-        asset_type=asset_type,
-        action=action,
-        subscription=subscription,
-        resource_groups=resource_groups,
-        vnets=vnets,
-        dry_run=dry_run,
-        asset_ids=asset_ids,
-        action_parmas=action_params,
-        regions=regions,
-    )
+
+    # The following dictionary maps functions to their corresponding types and actions.
+    # For instance, for the type 'network-security-group' and action 'remove_or_replace_security_rules',
+    # the function 'do_network_security_group_action_remove_or_replace_security_rules' is mapped.
+    functions_mapping = {
+        'network-security-group': {
+            'remove_or_replace_security_rules': do_network_security_group_action_remove_or_replace_security_rules,
+            'find_associations': do_network_security_group_action_find_associations}
+    }
+    result["executionResult"] = functions_mapping[asset_type][action](credential=credential,
+                                                                      action=action,
+                                                                      subscription=subscription,
+                                                                      resource_groups=resource_groups,
+                                                                      vnets=vnets,
+                                                                      dry_run=dry_run,
+                                                                      asset_ids=asset_ids,
+                                                                      action_params=action_params,
+                                                                      regions=regions, )
 
     result_type = "dryrun" if dry_run else "execution"
-    if params.testId:
-        result["testId"] = params.testId
+
+    result["testId"] = params.testId
     if not output_dir.endswith("/"):
         output_dir = output_dir + "/"
     result["stateFile"] = utils.export_data_filename_with_timestamp(

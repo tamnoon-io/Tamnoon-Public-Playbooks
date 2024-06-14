@@ -49,11 +49,11 @@ Similarly, if buckets have similar policy but only with effect `Deny`, then irre
 2. Execute the automation from AWS directory
    1. Using CLI parameters:  
    ```
-    python3 -m Automations.S3Actions.S3Helper --profile <aws_profile> --action check_public_access --regions <comma separated list of region(s) or all> --bucketNames <comma separated list of bucket name(s) or all>
+    python3 -m Automations.S3Actions.S3Helper --profile <aws_profile> --action check_public_access  --bucketNames <comma separated list of bucket name(s) or all>
    ```  
    or  
    ```
-    python3 -m Automations.S3Actions.S3Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --action check_public_access --regions <comma separated list of region/s> --bucketNames <comma separated list of bucket names>
+    python3 -m Automations.S3Actions.S3Helper --awsAccessKey <aws_access_key> --awsSecret <aws_secret> --action check_public_access --bucketNames <comma separated list of bucket names>
    ```  
 
     This automation does not require any action params.

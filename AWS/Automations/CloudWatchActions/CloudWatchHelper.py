@@ -39,11 +39,12 @@ def _do_query_execution(
             exit()
 
         query = flowlog_query_builder(
+            session=session,
             dst_addr=dst_addr,
             interface_ids=interfac_ids,
             dst_port=dst_port,
             exclude_private_ips_from_source=exclude_private_ips_from_source,
-            exclude_src_ports=exclude_src_ports
+            exclude_src_ports=exclude_src_ports,
         )
 
         output = get_cloudwatch_data(

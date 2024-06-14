@@ -284,6 +284,7 @@ def do_check_public_access(session, client, list_of_buckets, account_id):
     )
 
     region_data = {}
+    buckets = []
     try:
         response = client.list_buckets()
         for bucket in response["Buckets"]:
@@ -305,13 +306,16 @@ def do_check_public_access(session, client, list_of_buckets, account_id):
         return {}
 
     region_data = find_buckets_bpa(session, buckets, caller_identity['Account'])
-    if len(region_data.values()) == 0:
-        if len(list_of_buckets) > 0:
-            if list_of_buckets[0] != "all":
-                for bucket_name in list_of_buckets:
-                    region_data[bucket_name] = "bucket not found"
-            else:
-                region_data['all'] = "buckets not found"
+    found_buckets = region_data["Buckets"].keys()
+    if len(found_buckets) < len(list_of_buckets):
+        if list_of_buckets != ["all"]:
+            for bucket_name in list_of_buckets:
+                if bucket_name not in found_buckets:
+                    region_data["Buckets"][bucket_name] = "bucket not found"
+                    logging.exception(f"bucket {bucket_name} not found", exc_info=False)
+        else:
+            region_data["Buckets"]['all'] = "buckets not found"
+            logging.exception(f"There are no buckets", exc_info=False)
 
 
     return region_data
@@ -418,37 +422,24 @@ if __name__ == '__main__':
     is_revert = args.revert if args.revert else False
 
     if regions:
-        # in case that regions parameter is set , assume that we want to enable all vpc flow logs inside the region
         session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret,
                                       aws_session_token=aws_session_token)
-        caller_identity = utils.get_caller_identity(session=session)
-        result['caller-identity'] = caller_identity
-        cli_regions = utils.get_regions(regions, session)
-        list_of_regions = list(set().union(*[[session.region_name], cli_regions]))
-        logging.info(f"Going to run over {regions} regions including region found with profile configuration {session.region_name}")
+        list_of_regions = utils.get_regions(regions, session)
+        if len(list_of_regions) > 0:
+            regions = list_of_regions[0]
 
-        for region in list_of_regions:
-            logging.info(f"Working on Region - {region}")
-            session = utils.setup_session(profile=profile, region=region, aws_access_key=aws_access_key,
-                                          aws_secret=aws_secret, aws_session_token=aws_session_token)
-            action_result = _do_action(list_of_buckets=list_of_buckets, session=session, is_revert=is_revert,
-                                       action=action, params=params, caller_identity=caller_identity)
-            if action_result:
-                result[region] = action_result
-            else:
-                result[region] = {}
+    session = utils.setup_session(profile=profile, region=regions, aws_access_key=aws_access_key,
+                                aws_secret=aws_secret, aws_session_token=aws_session_token)
+    caller_identity = utils.get_caller_identity(session=session)
+    result['caller-identity'] = caller_identity
+
+    logging.info(f"Working on Region - {session.region_name}")
+    action_result = _do_action(list_of_buckets=list_of_buckets, session=session, is_revert=is_revert,
+                            action=action, params=params, caller_identity=caller_identity)
+    if action_result:
+        result[session.region_name] = action_result
     else:
-        session = utils.setup_session(profile=profile, aws_access_key=aws_access_key, aws_secret=aws_secret,
-                                      aws_session_token=aws_session_token)
-        caller_identity = utils.get_caller_identity(session=session)
-        result['caller-identity'] = caller_identity
-        logging.info(f"Going to run over the default - {session.region_name} - region")
-        action_result = _do_action(list_of_buckets=list_of_buckets, session=session, is_revert=is_revert, action=action,
-                                   params=params, caller_identity=caller_identity)
-        if action_result:
-            result[session.region_name] = action_result
-        else:
-            result[session.region_name] = {}
+        result[session.region_name] = {}
 
     filename = os.path.join(
         args.outputDirectory,

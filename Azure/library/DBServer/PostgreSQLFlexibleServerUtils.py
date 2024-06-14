@@ -135,3 +135,65 @@ def update_firewall_rules(
     result = update_operation.result()
 
     return result
+
+
+def is_audit_enabled(diagnostic_setting):
+    for setting in diagnostic_setting:
+        if hasattr(setting, "logs"):
+            for policy in setting.logs:
+                if (
+                    hasattr(policy, "category_group")
+                    and policy.category_group.lower() == "audit"
+                ):
+                    return policy.enabled
+        elif "logs" in setting:
+            for policy in setting["logs"]:
+                if (
+                    "category_group" in policy
+                    and policy["category_group"].lower() == "audit"
+                ):
+                    return "enabled" in policy and policy["enabled"]
+
+    return False
+
+
+def get_audit_diagnostics(monitor_client, subscription_id, server_uri):
+    return list(monitor_client.diagnostic_settings.list(resource_uri=server_uri))
+
+
+def setup_audit_enabled(
+    monitor_client,
+    subscription_id,
+    server_id,
+    storage_account_id,
+    diagnostics_setting_name,
+):
+    parameters = {
+        "logs": [
+            {
+                "category_group": "audit",
+                "enabled": True,
+            }
+        ],
+        "metrics": [
+            {
+                "time_grain": "PT1M",
+                "category": "AllMetrics",
+                "enabled": True,
+            }
+        ],
+        "storageAccountId": storage_account_id,
+    }
+
+    return monitor_client.diagnostic_settings.create_or_update(
+        name=diagnostics_setting_name,
+        resource_uri=server_id,
+        parameters=parameters,
+        content_type="application/json",
+    ).as_dict()
+
+
+def remove_audit_enabled(monitor_client, server_id, diagnostics_setting_name):
+    monitor_client.diagnostic_settings.delete(
+        resource_uri=server_id, name=diagnostics_setting_name
+    )

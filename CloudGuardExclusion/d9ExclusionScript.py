@@ -290,7 +290,7 @@ if __name__ == '__main__':
         date_range_from = args.dateRangeFrom
     date_range_to = None
     if args.dateRangeTo:
-        date_range_from = args.dateRangeTo
+        date_range_to = args.dateRangeTo
 
     log_setup(args.logLevel)
 

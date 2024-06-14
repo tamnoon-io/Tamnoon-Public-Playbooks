@@ -644,12 +644,10 @@ def remove_or_replace_security_rules_from_nsgs(
             "network_management",
             dict({"subscription_id": subscription_id}),
         )
-
-        if not use_all_vnets:
-            vnet_list = list(network_client.virtual_networks.list_all())
+        vnet_list = list(network_client.virtual_networks.list_all())
         pop_vnet_indices = []
         for vnet_index, vnet in enumerate(vnet_list):
-            if not vnets.__contains__(vnet.name):
+            if not use_all_vnets and not vnets.__contains__(vnet.name):
                 pop_vnet_indices.append(vnet_index)
                 logging.debug(f"removing vnet {vnet.name}")
 
