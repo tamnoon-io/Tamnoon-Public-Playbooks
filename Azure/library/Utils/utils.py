@@ -2,6 +2,7 @@ import logging
 import json
 import yaml
 import time
+import os
 
 
 class Params(dict):
@@ -47,9 +48,14 @@ def build_params(args):
     # Get params from file
     if args.file:
         try:
-            with open(args.file, "r") as f:
-                config = yaml.safe_load(f)
-                return Params(config)
+            with open(args.file, "r", encoding="utf8") as f:
+                file_extension = os.path.splitext(args.file)[1]
+                if file_extension in ['.yaml', '.yml', '.YML', '.YAML']:
+                    config = yaml.safe_load(f)
+                    return Params(config)
+                elif file_extension in ['.json', '.JSON']:
+                    config = json.load(f)
+                    return Params(config)
         except Exception as e:
             logging.error(f"Something went wrong with file reading - {e}")
     else:
@@ -228,11 +234,11 @@ def export_data(file_name, output, export_format="JSON"):
     :param output: The text to save
     :return:
     """
-    if export_format == "JSON":
-        with open(file_name, "w") as f:
+    if export_format.upper() == "JSON":
+        with open(file_name, "w", encoding="utf8") as f:
             json.dump(output, f, ensure_ascii=False, indent=4)
         logging.info(f"Save execution result to - json to path: {file_name}")
-    if export_format == "CSV":
+    if export_format.upper() == "CSV":
         import pandas as pd
 
         pd.json_normalize(output).to_csv(file_name)
@@ -325,3 +331,43 @@ def iscidr(s):
 def format_datetime_for_azure_resource_name(value):
     formatted_datetime = value.strftime("%Y-%m-%d-%H-%M-%S")
     return formatted_datetime
+
+
+def print_help_valid_types(json_data, tamnoon_desc_usage):
+    """
+    Prints help message for cases without type and action, and displays types with their descriptions.
+
+    :param json_data: JSON object containing types as keys and their descriptions as values.
+    :type json_data: dict
+    :param tamnoon_desc_usage: JSON object containing usage message.
+    :type tamnoon_desc_usage: dict
+    :return: None
+    """
+    if json_data:
+        print(f"\nusage: {tamnoon_desc_usage}\n")
+        print("Type      :        Description")
+        for key in json_data:
+            print(key, " : ", json_data[key])
+    else:
+        logging.info("Help Json Data Is Not Found.")
+
+
+def type_help(type_json_data):
+    """
+    Prints help message for the 'type' case and displays actions available for a given type and its description.
+
+    :param type_json_data: JSON object containing actions as keys and their descriptions as values.
+    :type type_json_data: dict
+    :param json_data: JSON object containing overall description.
+    :type json_data: dict
+    :return: String containing the formatted help message.
+    :rtype: str
+    """
+
+    string = ""
+    for key in type_json_data:
+        string += str(key) + " : " + str(type_json_data[key]) + "\n"
+    return string
+
+
+
