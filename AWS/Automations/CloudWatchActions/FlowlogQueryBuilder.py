@@ -2,12 +2,30 @@ from Automations.Utils.isip import isip
 import re
 
 
+def get_private_ips_for_interface_ids(session, interface_ids):
+    ec2_client = session.client('ec2')
+    interface_to_ip_mapping = dict()
+
+    # Describe network interfaces to get private IP addresses
+    response = ec2_client.describe_network_interfaces(
+        NetworkInterfaceIds=interface_ids)
+    for interface in response['NetworkInterfaces']:
+        interface_to_ip_mapping[
+            interface["NetworkInterfaceId"]
+        ] = interface['PrivateIpAddress']
+
+    ec2_client.close()
+    return interface_to_ip_mapping
+
+
 def flowlog_query_builder(
-    dst_addr=None,
-    interface_ids=None,
-    dst_port=None,
-    exclude_private_ips_from_source=False,
-    exclude_src_ports=False
+        session=None,
+        dst_addr=None,
+        interface_ids=None,
+        dst_port=None,
+        exclude_private_ips_from_source=False,
+        exclude_src_ports=False,
+        matching_interface_ip_with_destaddr_ip=True
 ):
     """
     This function build cloud watch log query for vpc flow logs
@@ -16,6 +34,7 @@ def flowlog_query_builder(
     :param interface_ids: The eni that this traffic was recorded on
     :param dst_port: The targeted port
     :param exclude_private_ips_from_source: A flag to mark if to exclude private ips
+    :param matching_interface_ip_with_destaddr_ip: A flag to mark if to match interface ids ip address with destAddr
     :return:
     """
     base_filter = (
@@ -34,19 +53,28 @@ def flowlog_query_builder(
         exit()
 
     ips, enis, ports = None, None, None
-    ip_string, eni_string, port_string = "", "", ""
+    eni_match_ip_string, ip_string, eni_string, port_string = "", "", "", ""
     filter_string = ""
+    if interface_ids:
+        if matching_interface_ip_with_destaddr_ip:
+            interface_ids = interface_ids.split(" ")
+            ip_address_of_interface_ids = get_private_ips_for_interface_ids(
+                session, interface_ids)
+            eni_match_ip_string += " | filter (" + " or ".join([f"(interfaceId = '{interface_id}' and dstAddr = '{ip_address}')" for interface_id,
+                                                               ip_address in ip_address_of_interface_ids.items()]) + ") "
+        else:
+            enis = ["'" + x.strip() + "'" for x in re.split(" |,", interface_ids)]
+            eni_string = (
+                "| filter interfaceId in [" + ",".join(enis) + "]"
+            )
 
     if dst_addr:
-        ips = ["'"+x.strip()+"'" for x in re.split(" |,", dst_addr) if isip(x.strip())]
+        ips = ["'" + x.strip() + "'" for x in re.split(" |,",
+                                                       dst_addr) if isip(x.strip())]
         ip_string = (
-            "| filter dstAddr in [" + ",".join(ip_string) + "]"
+            "| filter dstAddr in [" + ",".join(ips) + "]"
         )
-    if interface_ids:
-        enis = ["'"+x.strip()+"'" for x in re.split(" |,", interface_ids)]
-        eni_string = (
-            "| filter interfaceId in [" + ",".join(enis) +"]"
-        )
+
     if dst_port:
         ports = [str(x.strip()) for x in re.split(" |,", dst_port)]
         port_string = (
@@ -54,13 +82,16 @@ def flowlog_query_builder(
         )
 
     if exclude_src_ports:
-        exsports=ports = [str(x.strip()) for x in re.split(" |,", exclude_src_ports) if len(str(x.strip()))>0]
-        exsport_string = " and (srcPort not in [" + ",".join(exsports) +"])"
+        exsports = ports = [str(x.strip()) for x in re.split(
+            " |,", exclude_src_ports) if len(str(x.strip())) > 0]
+        exsport_string = " and (srcPort not in [" + ",".join(exsports) + "])"
 
     if ip_string:
         base_filter = base_filter + ip_string
     elif eni_string:
         base_filter = base_filter + eni_string
+    elif eni_match_ip_string:
+        base_filter = base_filter + eni_match_ip_string
 
     if port_string:
         base_filter = base_filter + port_string
@@ -70,6 +101,8 @@ def flowlog_query_builder(
             base_filter
             + " and ( srcAddr not like /^(?:10|127|172\.(?:1[6-9]|2[0-9]|3[01])|192\.168)\..*$/ )"
         )
+
     if exclude_src_ports:
         base_filter = base_filter + exsport_string
+
     return base_filter + base_stat + base_sort + base_limit

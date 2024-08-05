@@ -5,6 +5,7 @@ import requests
 import textwrap
 from xml.etree import ElementTree
 from botocore.exceptions import ClientError
+from ..Utils.utils import DEFAULT_REGION
 
 
 def is_account_level_bpa_configured(config):
@@ -47,9 +48,9 @@ def get_account_level_bpa(session, account_id):
         # find account level bpa and put into output["AccountLevelBPA"]
         # output["AccountLevelBPA"] is global for all buckets in
         # given region and for given account_id
-        response = session.client("s3control").get_public_access_block(
-            AccountId=account_id
-        )
+        response = session.client(
+            "s3control", region_name=DEFAULT_REGION
+        ).get_public_access_block(AccountId=account_id)
         return response["PublicAccessBlockConfiguration"]
         # value of output["AccountLevelBPA"] will help us identify if we can
         # if it is string, and equals to "NotConfigured", we can ignore this
@@ -113,7 +114,9 @@ def get_bucket_level_bpa(session, bucket_name):
     :return dict or str:
     """
     try:
-        response = session.client("s3").get_public_access_block(Bucket=bucket_name)
+        response = session.client(
+            "s3", region_name=DEFAULT_REGION
+        ).get_public_access_block(Bucket=bucket_name)
         return response["PublicAccessBlockConfiguration"]
     except ClientError as ce:
         if ce.response["Error"]["Code"] == "NoSuchPublicAccessBlockConfiguration":
@@ -174,7 +177,9 @@ def get_bucket_acl(session, bucket_name):
     :return list or str:
     """
     try:
-        response = session.client("s3").get_bucket_acl(Bucket=bucket_name)
+        response = session.client("s3", region_name=DEFAULT_REGION).get_bucket_acl(
+            Bucket=bucket_name
+        )
         if len(response["Grants"]) > 0:
             # return ACL list
             return response["Grants"]
@@ -235,7 +240,9 @@ def get_bucket_policy(session, bucket_name):
     :return list or str:
     """
     try:
-        policy = session.client("s3").get_bucket_policy(Bucket=bucket_name)
+        policy = session.client("s3", region_name=DEFAULT_REGION).get_bucket_policy(
+            Bucket=bucket_name
+        )
         policy_obj = json.loads(policy["Policy"])
         if len(policy_obj["Statement"]) > 0:
             # return policies list

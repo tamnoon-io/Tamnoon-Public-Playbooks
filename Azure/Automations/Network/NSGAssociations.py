@@ -166,16 +166,32 @@ class NSGAssociations:
         )
 
         # self.resources = self.list_all_resources()
+        # self.resource_groups = self.list_resource_groups(
+        #     params.resourceGroups.split(",")
+        #     if params.resourceGroups != None and isinstance(params.resourceGroups,str) params.resourceGroups elif params.resourceGroups != None
+        #     else ["all"]
+        # )
         self.resource_groups = self.list_resource_groups(
-            params.resourceGroups.split(",")
-            if params.resourceGroups != None
-            else ["all"]
+            params.resourceGroups.split(",") if params.resourceGroups is not None and isinstance(params.resourceGroups,
+                                                                                                 str) else (
+                params.resourceGroups if params.resourceGroups is not None else ["all"])
         )
+
+        # self.locations = self.list_locations(
+        #     params.regions.split(",") if params.regions != None else ["all"]
+        # )
         self.locations = self.list_locations(
-            params.regions.split(",") if params.regions != None else ["all"]
+            params.regions.split(",") if params.regions is not None and isinstance(params.regions,
+                                                                                                 str) else (
+                params.regions if params.regions is not None else ["all"])
         )
+        # self.network_security_groups = self.list_nsgs(
+        #     params.assetIds.split(",") if params.assetIds != None else ["all"]
+        # )
         self.network_security_groups = self.list_nsgs(
-            params.assetIds.split(",") if params.assetIds != None else ["all"]
+            params.assetIds.split(",") if params.assetIds is not None and isinstance(params.assetIds,
+                                                                                                 str) else (
+                params.assetIds if params.assetIds is not None else ["all"])
         )
 
         self.virtual_networks = self.list_virtual_networks()

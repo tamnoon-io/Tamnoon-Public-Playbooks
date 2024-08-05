@@ -15,6 +15,19 @@ class DBTypes(Enum):
         return " ".join(value)
 
 
+cli_type_mapping = {
+    "sql-server": DBTypes.SQL,
+    "mysql-server": DBTypes.MYSQL_FLEXIBLE,
+    "postgresql-server": DBTypes.POSTGRE_SQL_FLEXIBLE,
+}
+
+inverse_cli_type_mapping = {
+    DBTypes.SQL: "sql-server",
+    DBTypes.MYSQL_FLEXIBLE: "mysql-server",
+    DBTypes.POSTGRE_SQL_FLEXIBLE: "postgresql-server",
+}
+
+
 class DBAction:
     data = None
     db_server = None
@@ -34,7 +47,7 @@ class DBAction:
                 "subscription_id": subscription_id,
                 "resource_group_name": resource_group_name,
                 "regions": regions,
-                f"{self.db_type}_server_name": db_server_name,
+                f"{self.db_type.value}_server_name": db_server_name,
             }
         )
         self.db_server = db_server
