@@ -93,7 +93,7 @@
   },
   {
     "id": "AWS-S3-R-1",
-    "title": "AWS Enable Block Public Access",
+    "title": "AWS S3 Enable Block Public Access",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/S3/TPlayBook_block_public_access.md"
   },
   {
@@ -143,7 +143,7 @@
   },
   {
     "id": "AZURE-Storage-R-3",
-    "title": "Azure Remove Blob Container public access configuration",
+    "title": "Azure Restrict Network Access to Storage Account",
     "url": "https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/Azure/Storage/TPlayBook_storage_account_restrict_network_access.md"
   },
   {
