@@ -1,13 +1,33 @@
 {
     "Version": "2012-10-17",
-    "Statement": [{
-        "Effect": "Deny",
-        "Action": ["ec2:CreateVolume", "ec2:RunInstances"],
-        "Resource": "*",
-        "Condition": {
-            "Bool": {
-                "ec2:Encrypted": "false"
+    "Statement": [
+        {
+            "Sid": "NewUnencryptedVolumesCannotBeCreated",
+            "Effect": "Deny",
+            "Action": ["ec2:CreateVolume"],
+            "Resource": "*",
+            "Condition": {
+                "Bool": {
+                    "ec2:Encrypted": "false"
+                }
             }
+        },
+        {
+            "Sid": "InstancesWithUnencryptedVolumesCannotBeLaunched",
+            "Effect": "Deny",
+            "Action": ["ec2:RunInstances"],
+            "Resource": "*",
+            "Condition": {
+                "Bool": {
+                    "ec2:Encrypted": "false"
+                }
+            }
+        },
+        {
+            "Sid": "EbsEncryptionByDefaultSettingCannotBeDisabled",
+            "Effect": "Deny",
+            "Action": ["ec2:DisableEbsEncryptionByDefault"],
+            "Resource": "*"
         }
-    }]
+    ]
 }
