@@ -307,7 +307,6 @@ def do_sg_action(session, dry_run, action, asset_ids, action_parmas=None, output
             interestinggroups=[x for x in asset_ids if x.find("sg-")==0]
 
         rop = GetAllFlowlogs.regionhandler(
-            region=region,
             session=session,
             output_directory=output_directory,
             hoursback=hoursback,
