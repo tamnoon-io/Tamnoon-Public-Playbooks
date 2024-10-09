@@ -1,5 +1,5 @@
 
-[comment]: <> (This is a readonly file, do not edit directly, to change update the ec2_get_imdsv1_usage.json)
+[comment]: <> (This is a readonly file, do not edit directly, to change update the ec2_get_imdsv1_usage_readme_data.json)
 <img src='../../../../TamnoonPlaybooks/images/icons/Tamnoon.png' width = '200' />
 
 # Tamnoon Investigation Playbook: Ec2 - Switch to use IMDSv2 for EC2
@@ -28,7 +28,7 @@ All Instances that this metric is 0 for them are found by this Automation, for w
     After authentication via AWS API, the script execution will run on the same AWS account of those credentials defined in fallbacks 1-3 (see above).
 
 
-1. AWS cretentials defined on the execution machine with permission to ec2::describeInstances
+3. AWS credentials defined on the execution machine with permission to ec2::describeInstances
 ## Playbook Steps: 
 
 
@@ -45,79 +45,101 @@ All Instances that this metric is 0 for them are found by this Automation, for w
 3. Execute the automation
 
 	1. Using CLI parameters:
-	``````sh
-	python3 -m Automations.EC2Actions \
-	ec2 \
-	get_imdsv1_usage \
-	--profile <aws_profile> \
-	--regions <The region/s to works on> \
-	--assetIds <comma separated list of instances to remediate or all>  \
-	--actionParams <The action params >
-	``````
-	or  
-	``````sh
-	python3 -m Automations.EC2Actions \
-	ec2 \
-	get_imdsv1_usage \
-	--awsAccessKey <aws_access_key> \
-	--awsSecret <aws_secret> \
-	--regions <The region/s to works on> \
-	--assetIds <comma separated list of instances to remediate or all>  \
-	--actionParams <The action params >
-	``````
-	or  
-	``````sh
-	python3 -m Automations.EC2Actions \
-	ec2 \
-	get_imdsv1_usage \
-	--awsAccessKey <aws_access_key> \
-	--awsSecret <aws_secret> \
-	--awsSessionToken <specific session token> \
-	--regions <The region/s to works on> \
-	--assetIds <comma separated list of instances to remediate or all>  \
-	--actionParams <The action params >
-	``````
+		``````sh
+		python3 -m Automations.EC2Actions \
+		ec2 \
+		get_imdsv1_usage \
+		--profile <aws_profile> \
+		--regions <The region/s to works on> \
+		--assetIds <comma separated list of instances to remediate or all>  \
+		--actionParams <The action params >
+		``````
+		or  
+		``````sh
+		python3 -m Automations.EC2Actions \
+		ec2 \
+		get_imdsv1_usage \
+		--awsAccessKey <aws_access_key> \
+		--awsSecret <aws_secret> \
+		--regions <The region/s to works on> \
+		--assetIds <comma separated list of instances to remediate or all>  \
+		--actionParams <The action params >
+		``````
+		or  
+		``````sh
+		python3 -m Automations.EC2Actions \
+		ec2 \
+		get_imdsv1_usage \
+		--awsAccessKey <aws_access_key> \
+		--awsSecret <aws_secret> \
+		--awsSessionToken <specific session token> \
+		--regions <The region/s to works on> \
+		--assetIds <comma separated list of instances to remediate or all>  \
+		--actionParams <The action params >
+		``````
 
-	2. Using YAML file: a yaml file is a text file with a "yml" or "yaml" extension whose content is in the format:
-	``````sh
-	python3 -m Automations.EC2Actions \
-	ec2 \
-	get_imdsv1_usage \
-	--file path-to-yml-file
-	``````
-	And the contents of yml/yaml file would look like  
-	``````yaml
-	profile: tamnoon
-	regions:
-	 - all
-	assetIds:
-	 - all
-	actionParams:
-	  days: 6
-	``````
+	2. Using YAML file: a yaml file is a text file with a "yml" or "yaml" extension whose execution command is in the format:
+		``````sh
+		python3 -m Automations.EC2Actions \
+		ec2 \
+		get_imdsv1_usage \
+		--file path-to-yml-file
+		``````
+		And the contents of yml/yaml file would look like  
+		``````yaml
+		profile: tamnoon
+		regions:
+		 - all
+		assetIds:
+		 - all
+		actionParams:
+		  days: 6
+		``````
 
-	2. Using JSON file: a json file is a text file with a "json" extension whose content is in the format:
-	``````sh
-	python3 -m Automations.EC2Actions \
-	ec2 \
-	get_imdsv1_usage \
-	--file path-to-json-file
-	``````
-	And the contents of json file would look like  
-	``````json
-	{
-	  "profile": "tamnoon",  
-	  "regions": [
-	    "all"
-	  ],  
-	  "assetIds": [
-	    "all"
-	  ],  
-	  "actionParams":  {  
-	    "days": 6  
-	  } 
-	}
-	``````
+	2. Using JSON file: a json file is a text file with a "json" extension whose execution command is in the format:
+		``````sh
+		python3 -m Automations.EC2Actions \
+		ec2 \
+		get_imdsv1_usage \
+		--file path-to-json-file
+		``````
+		And the contents of json file would look like  
+		``````json
+		{
+		  "profile": "tamnoon",  
+		  "regions": [
+		    "all"
+		  ],  
+		  "assetIds": [
+		    "all"
+		  ],  
+		  "actionParams":  {  
+		    "days": 6  
+		  } 
+		}
+		``````
+### profile - (Optional)
+Use the aws profile for setting up session during automation.
+### awsAccessKey - (Optional)
+Use the aws access key for setting up session during automation. This must be accompanied by --awsSecret.
+### awsSecret - (Optional)
+Use the aws secret key for setting up session during automation. This must be accompanied by --awsAccessKey.
+### awsSessionToken - (Optional)
+Use the short term session token for setting up session during automation. This must be accompanied by --awsSecret and --awsAccessKey
+### regions - (Optional)
+List of Regions used to find ec2 instance. If not used, default region is us-east-1.
+### assetIds - (Required)
+The EC2 Instance's id identifier.
+### actionParams - (Optional)
+The ActionParams parameter provides the automation with parameters that are specific to the action taken. In this case get_imdsv1_usage.  
+  In general, the value of the ActionParams parameter is one, single-quoted text string that specifies a json.  
+  ```'{"param1key": "param1value", "param2key": "param2value"}'```  
+  There is one optional action parameters associated with the action get_imdsv1_usage:  
+  1. days - (Optional) - The past duration to find the IMDSv1 usage before current time. Default value 14 days. Example,  
+  ```  
+  --actionParams '{"days": 90}'  
+  ```
+
 ## Sample Output
 
 ``````
@@ -152,25 +174,3 @@ All Instances that this metric is 0 for them are found by this Automation, for w
 ``````
 ### Note
 This automation does not support rollback.
-### profile - (Optional)
-Use the aws profile for setting up session during automation.
-### awsAccessKey - (Optional)
-Use the aws access key for setting up session during automation. This must be accompanied by --awsSecret.
-### awsSecret - (Optional)
-Use the aws secret key for setting up session during automation. This must be accompanied by --awsAccessKey.
-### awsSessionToken - (Optional)
-Use the short term session token for setting up session during automation. This must be accompanied by --awsSecret and --awsAccessKey
-### regions - (Optional)
-List of Regions used to find security group of ec2 instance. If not used, default region is us-east-1.
-### assetIds - (Required)
-The EC2 Instance's id identifier.
-### actionParams - (Optional)
-The ActionParams parameter provides the automation with parameters that are specific to the action taken. In this case get_imdsv1_usage.  
-  In general, the value of the ActionParams parameter is one, single-quoted text string that specifies a json.  
-  ```'{"param1key": "param1value", "param2key": "param2value"}'```  
-  There is one optional action parameters associated with the action get_imdsv1_usage:  
-  1. days - (Optional) - The past duration to find the IMDSv1 usage before current time. Default value 14 days. Example,  
-  ```  
-  --actionParams '{"days": 90}'  
-  ```
-

@@ -1,0 +1,542 @@
+Description: Tamnoon - This CFT template create a config remediation rule to handle non encrypted EBS volumes using a specific Key or givin Key.
+Parameters:
+  KeyAdminIAMUserArn:
+    Description: (Optional) - This is the arn of the admin IAM User or Role to generate a new KMS key for the encryption in case the KMS arn value was not provided
+    Type: String
+  KMSArn:
+    Description: (Optional) - The arn of a given KMS to use. If not provided, the CFT will create one to use if provided no need to populate the other parameter
+    Type: String
+
+Conditions:
+  IsKMSNotProvided: !Equals [ { "Ref": "KMSArn"}, ""]
+  IsKMSProvided: !Not [!Equals [ { "Ref": "KMSArn"}, ""]]
+
+Resources:
+  KMSCreationHandle:
+    Condition: IsKMSNotProvided
+    DependsOn:
+      - EBSEncryptionKey
+      - EBSEncryptionKeyAlias
+    Type: "AWS::CloudFormation::WaitConditionHandle"
+
+  WaitHandle:
+    Condition: IsKMSProvided
+    Type: "AWS::CloudFormation::WaitConditionHandle"
+
+  WaitCondition:
+    Type: "AWS::CloudFormation::WaitCondition"
+    Properties:
+      Handle: !If [ IsKMSNotProvided, !Ref KMSCreationHandle, !Ref WaitHandle ]
+      Timeout: "1"
+      Count: 0
+
+  EncryptionRemediationPolicy:
+    Condition: IsKMSNotProvided
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub 'EncryptEBSAutomationRole-policy-${AWS::Region}'
+      Roles:
+        - !Ref EncryptionRemediationRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:DescribeStacks
+              - cloudformation:DeleteStack
+            Resource:
+              - !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/DetachEBSVolumeStack*'
+              - !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/AttachEBSVolumeStack*'
+          - Effect: Allow
+            Action:
+              - ec2:AttachVolume
+              - ec2:CopySnapshot
+              - ec2:CreateSnapshot
+              - ec2:CreateVolume
+              - ec2:CreateTags
+              - ec2:DeleteSnapshot
+              - ec2:DeleteVolume
+              - ec2:DescribeInstances
+              - ec2:DescribeInstanceStatus
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DescribeSnapshots
+              - ec2:DescribeVolumes
+              - ec2:DescribeVolumes
+              - ec2:ModifyInstanceAttribute
+              - ec2:StartInstances
+              - ec2:StopInstances
+              - tag:TagResources
+              - ssm:GetAutomationExecution
+              - ssm:StartAutomationExecution
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - lambda:DeleteFunction
+              - lambda:CreateFunction
+              - lambda:GetFunction*
+              - lambda:InvokeFunction
+            Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:DetachVolumeLambda*'
+          - Effect: Allow
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:CreateGrant
+              - kms:ListGrants
+              - kms:DescribeKey
+            Resource:
+              !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${EBSEncryptionKey.KeyId}'
+          - Effect: Allow
+            Action:
+              - iam:PassRole
+              - iam:DeleteRole
+              - iam:PutRolePolicy*
+              - iam:CreateRole
+              - iam:GetRole*
+              - iam:DeleteRolePolicy
+            Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/DetachEBSVolumeStack*LambdaRole*'
+    DependsOn:
+      - EncryptionRemediationRole
+
+  EncryptionRemediationPolicyV2:
+    Condition: IsKMSProvided
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub 'EncryptEBSAutomationRole-policy-${AWS::Region}'
+      Roles:
+        - !Ref EncryptionRemediationRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:DescribeStacks
+              - cloudformation:DeleteStack
+            Resource:
+              - !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/DetachEBSVolumeStack*'
+              - !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/AttachEBSVolumeStack*'
+          - Effect: Allow
+            Action:
+              - ec2:AttachVolume
+              - ec2:CopySnapshot
+              - ec2:CreateSnapshot
+              - ec2:CreateVolume
+              - ec2:CreateTags
+              - ec2:DeleteSnapshot
+              - ec2:DeleteVolume
+              - ec2:DescribeInstances
+              - ec2:DescribeInstanceStatus
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DescribeSnapshots
+              - ec2:DescribeVolumes
+              - ec2:DescribeVolumes
+              - ec2:ModifyInstanceAttribute
+              - ec2:StartInstances
+              - ec2:StopInstances
+              - tag:TagResources
+              - ssm:GetAutomationExecution
+              - ssm:StartAutomationExecution
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - lambda:DeleteFunction
+              - lambda:CreateFunction
+              - lambda:GetFunction*
+              - lambda:InvokeFunction
+            Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:DetachVolumeLambda*'
+          - Effect: Allow
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:CreateGrant
+              - kms:ListGrants
+              - kms:DescribeKey
+            Resource:
+              !Ref KMSArn
+          - Effect: Allow
+            Action:
+              - iam:PassRole
+              - iam:DeleteRole
+              - iam:PutRolePolicy*
+              - iam:CreateRole
+              - iam:GetRole*
+              - iam:DeleteRolePolicy
+            Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/DetachEBSVolumeStack*LambdaRole*'
+    DependsOn:
+      - EncryptionRemediationRole
+
+  EncryptionRemediationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'EncryptionRemediationRole-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - ssm.amazonaws.com
+                - ec2.amazonaws.com
+        Version: "2012-10-17"
+
+  EBSEncryptionKey:
+    Condition: IsKMSNotProvided
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Key used for encryption EBS volumes
+      Enabled: True
+      EnableKeyRotation: True
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: kms:*
+            Resource: '*'
+          - Sid: Allow administration of the key
+            Effect: Allow
+            Principal:
+              AWS: !Ref KeyAdminIAMUserArn
+            Action:
+              - kms:Create*
+              - kms:Describe*
+              - kms:Enable*
+              - kms:List*
+              - kms:Put*
+              - kms:Update*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Get*
+              - kms:Delete*
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+            Resource: '*'
+          - Sid: Allow use of the key
+            Effect: Allow
+            Principal:
+              AWS:
+                !GetAtt EncryptionRemediationRole.Arn
+            Action:
+              - kms:DescribeKey
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey
+              - kms:GenerateDataKeyWithoutPlaintext
+            Resource: '*'
+
+  EBSEncryptionKeyAlias:
+    Condition: IsKMSNotProvided
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/EC2EncryptionAtRestKeyAlias
+      TargetKeyId: !Ref EBSEncryptionKey
+
+  EncryptedVolumesConfigRule:
+    Type: AWS::Config::ConfigRule
+    Properties: 
+      ConfigRuleName: "encrypted-volumes"
+      Scope:
+        ComplianceResourceTypes:
+          - "AWS::EC2::Volume"
+      Description: "A Config rule that checks whether the EBS volumes that are in an attached state are encrypted."
+      Source:
+        Owner: "AWS"
+        SourceIdentifier: "ENCRYPTED_VOLUMES"
+  UnencryptedEBSRemediation:
+    Type: AWS::SSM::Document
+    Properties:
+      Content:
+        schemaVersion: "0.3"
+        description: Encrypt EBS Volume Automation Document
+        assumeRole: "{{automationAssumeRole}}"
+        parameters:
+          volumeId:
+            description: (Required) Volume ID of the EBS volume attached to an ec2 instance whose volume needs to be encrypted
+            type: String
+          kmsKeyId:
+            description: (Required) Customer KMS key to use during the encryption
+            type: String
+            default:
+              Fn::If: [IsKMSNotProvided, !Ref EBSEncryptionKey, !Ref KMSArn]
+          automationAssumeRole:
+            type: String
+            description: (Optional) The ARN of the role that allows Automation to perform the actions on your behalf.
+            default:
+             !GetAtt EncryptionRemediationRole.Arn
+        mainSteps:
+          - name: describeVolume
+            action: aws:executeAwsApi
+            timeoutSeconds: 30
+            onFailure: Abort
+            nextStep: describeInstance
+            maxAttempts: 1
+            inputs:
+              Service: ec2
+              Api: DescribeVolumes
+              VolumeIds:
+                - "{{volumeId}}"
+            outputs:
+              - Name: instanceId
+                Selector: $.Volumes[0].Attachments[0].InstanceId
+                Type: String
+              - Name: availabilityZone
+                Selector: $.Volumes[0].AvailabilityZone
+                Type: String
+              - Name: deviceVolumeType
+                Selector: $.Volumes[0].VolumeType
+                Type: String
+              - Name: deleteOnTermination
+                Selector: $.Volumes[0].Attachments[0].DeleteOnTermination
+                Type: Boolean
+              - Name: deviceMount
+                Selector: $.Volumes[0].Attachments[0].Device
+                Type: String
+          - name: describeInstance
+            action: aws:executeAwsApi
+            timeoutSeconds: 30
+            onFailure: Abort
+            nextStep: stopInstance
+            maxAttempts: 1
+            inputs:
+              Service: ec2
+              Api: DescribeInstances
+              InstanceIds:
+                - "{{describeVolume.instanceId}}"
+            outputs:
+              - Name: availabilityZone
+                Selector: $.Reservations[0].Instances[0].Placement.AvailabilityZone
+                Type: String
+              - Name: instanceState
+                Selector: $.Reservations[0].Instances[0].State.Name
+                Type: String
+          - name: stopInstance
+            action: aws:executeAutomation
+            timeoutSeconds: 300
+            onFailure: Abort
+            nextStep: createSnapshot
+            maxAttempts: 1
+            inputs:
+              DocumentName: AWS-StopEC2Instance
+              RuntimeParameters:
+                InstanceId: "{{describeVolume.instanceId}}"
+          - name: createSnapshot
+            action: aws:executeAutomation
+            timeoutSeconds: 18000
+            onFailure: Abort
+            nextStep: extractSnapshotId
+            maxAttempts: 3
+            inputs:
+              DocumentName: AWS-CreateSnapshot
+              RuntimeParameters:
+                VolumeId: "{{volumeId}}"
+          - name: extractSnapshotId
+            action: aws:executeAwsApi
+            timeoutSeconds: 30
+            onFailure: Abort
+            nextStep: copyAndEncryptSnapshot
+            maxAttempts: 1
+            inputs:
+              Service: ec2
+              Api: DescribeSnapshots
+              SnapshotIds: "{{createSnapshot.Output}}"
+            outputs:
+              - Name: SnapshotId
+                Selector: $.Snapshots[0].SnapshotId
+                Type: String
+          - name: copyAndEncryptSnapshot
+            action: aws:executeAwsApi
+            timeoutSeconds: 3600
+            onFailure: Abort
+            nextStep: waitForEncryptedSnapshot
+            maxAttempts: 1
+            inputs:
+              Service: ec2
+              Api: CopySnapshot
+              SourceSnapshotId: "{{extractSnapshotId.SnapshotId}}"
+              SourceRegion: "{{global:REGION}}"
+              Encrypted: true
+              KmsKeyId: "{{kmsKeyId}}"
+              DestinationRegion: "{{global:REGION}}"
+            outputs:
+              - Name: encryptedSnapshotId
+                Selector: $.SnapshotId
+                Type: String
+          - name: waitForEncryptedSnapshot
+            action: aws:waitForAwsResourceProperty
+            timeoutSeconds: 1800
+            onFailure: Abort
+            nextStep: createEncryptedVolumeFromEncryptedSnapshot
+            inputs:
+              Service: ec2
+              Api: DescribeSnapshots
+              SnapshotIds:
+                - "{{copyAndEncryptSnapshot.encryptedSnapshotId}}"
+              PropertySelector: $.Snapshots[0].State
+              DesiredValues:
+                - completed
+          - name: createEncryptedVolumeFromEncryptedSnapshot
+            action: aws:executeAwsApi
+            timeoutSeconds: 30
+            onFailure: Abort
+            nextStep: detachEBSVolume
+            maxAttempts: 1
+            inputs:
+              Service: ec2
+              Api: CreateVolume
+              AvailabilityZone: "{{describeInstance.availabilityZone}}"
+              Encrypted: true
+              KmsKeyId: "{{kmsKeyId}}"
+              SnapshotId: "{{copyAndEncryptSnapshot.encryptedSnapshotId}}"
+              VolumeType: "{{describeVolume.deviceVolumeType}}"
+              TagSpecifications:
+                - ResourceType: volume
+                  Tags:
+                    - Key: encrypted-clone-of-volume
+                      Value: "{{volumeId}}"
+                    - Key: Name
+                      Value: "encrypted-clone-of-volume {{volumeId}}"
+            outputs:
+              - Name: NewRootVolumeID
+                Selector: $.VolumeId
+                Type: String
+          - name: detachEBSVolume
+            action: aws:executeAutomation
+            timeoutSeconds: 300
+            onFailure: step:attachOriginalVolume
+            nextStep: attachNewEBSVolume
+            maxAttempts: 1
+            inputs:
+              DocumentName: AWS-DetachEBSVolume
+              RuntimeParameters:
+                VolumeId: "{{volumeId}}"
+          - name: attachNewEBSVolume
+            action: aws:executeAutomation
+            timeoutSeconds: 180
+            onFailure: step:detachNewVolume
+            nextStep: applyDeleteOnTerminationValue
+            maxAttempts: 1
+            inputs:
+              DocumentName: AWS-AttachEBSVolume
+              RuntimeParameters:
+                Device: "{{describeVolume.deviceMount}}"
+                InstanceId: "{{describeVolume.instanceId}}"
+                VolumeId: "{{createEncryptedVolumeFromEncryptedSnapshot.NewRootVolumeID}}"
+          - name: applyDeleteOnTerminationValue
+            action: aws:executeAwsApi
+            onFailure: step:detachNewVolume
+            nextStep: restoreInstanceInitialState
+            timeoutSeconds: 60
+            maxAttempts: 10
+            isCritical: true
+            inputs:
+              Service: ec2
+              Api: ModifyInstanceAttribute
+              InstanceId: "{{describeVolume.instanceId}}"
+              BlockDeviceMappings:
+                - DeviceName: "{{describeVolume.deviceMount}}"
+                  Ebs:
+                    DeleteOnTermination: "{{describeVolume.deleteOnTermination}}"
+          - name: restoreInstanceInitialState
+            action: aws:changeInstanceState
+            onFailure: step:detachNewVolume
+            isCritical: true
+            nextStep: markUnencryptedVolumeRemediated
+            inputs:
+              InstanceIds:
+                - "{{describeVolume.instanceId}}"
+              DesiredState: "{{describeInstance.instanceState}}"
+          - name: attachOriginalVolume
+            action: aws:executeAutomation
+            timeoutSeconds: 180
+            onFailure: Abort
+            isEnd: true
+            maxAttempts: 1
+            inputs:
+              DocumentName: AWS-AttachEBSVolume
+              RuntimeParameters:
+                Device: "{{describeVolume.deviceMount}}"
+                InstanceId: "{{describeVolume.instanceId}}"
+                VolumeId: "{{volumeId}}"
+          - name: detachNewVolume
+            action: aws:executeAutomation
+            timeoutSeconds: 300
+            onFailure: Abort
+            nextStep: attachOriginalVolume
+            maxAttempts: 1
+            inputs:
+              DocumentName: AWS-DetachEBSVolume
+              RuntimeParameters:
+                VolumeId: "{{createEncryptedVolumeFromEncryptedSnapshot.NewRootVolumeID}}"
+          - name: markUnencryptedVolumeRemediated
+            action: aws:executeAwsApi
+            timeoutSeconds: 300
+            onFailure: Continue
+            nextStep: deleteRootVolumeSnapshot
+            maxAttempts: 1
+            inputs:
+              Service: resourcegroupstaggingapi
+              Api: TagResources
+              ResourceARNList:
+                - arn:aws:ec2:{{global:REGION}}:{{global:ACCOUNT_ID}}:volume/{{volumeId}}
+              Tags:
+                encryptedVolumetoSwitch: "{{createEncryptedVolumeFromEncryptedSnapshot.NewRootVolumeID}}"
+          - name: deleteRootVolumeSnapshot
+            action: aws:executeAwsApi
+            onFailure: Continue
+            nextStep: deleteEncryptedRootVolumeSnapshot
+            timeoutSeconds: 300
+            maxAttempts: 1
+            inputs:
+              Service: ec2
+              Api: DeleteSnapshot
+              SnapshotId: "{{extractSnapshotId.SnapshotId}}"
+          - name: deleteEncryptedRootVolumeSnapshot
+            action: aws:executeAwsApi
+            onFailure: Continue
+            isEnd: true
+            timeoutSeconds: 300
+            maxAttempts: 1
+            inputs:
+              Service: ec2
+              Api: DeleteSnapshot
+              SnapshotId: "{{copyAndEncryptSnapshot.encryptedSnapshotId}}"
+        outputs:
+          - createEncryptedVolumeFromEncryptedSnapshot.NewRootVolumeID
+      DocumentType: Automation
+    DependsOn:
+      - WaitCondition
+
+  EncryptEBSVolumesConfigRemediation:
+    Type: AWS::Config::RemediationConfiguration
+    Properties:
+      ConfigRuleName: encrypted-volumes
+      TargetId:
+        Ref: UnencryptedEBSRemediation
+      TargetType: SSM_DOCUMENT
+      Automatic: false
+      Parameters:
+        automationAssumeRole:
+          StaticValue:
+            Values:
+              - !GetAtt EncryptionRemediationRole.Arn
+        kmsKeyId:
+          StaticValue:
+            Values:
+              - Fn::If: [ IsKMSNotProvided, !Ref EBSEncryptionKey, !Ref KMSArn]
+        volumeId:
+          ResourceValue:
+            Value: RESOURCE_ID
+      ResourceType: AWS::EC2::Volume
+      TargetVersion: "1"
+    DependsOn:
+      - UnencryptedEBSRemediation
+

@@ -1,5 +1,5 @@
 
-[comment]: <> (This is a readonly file, do not edit directly, to change update the security_group_get_usage.json)
+[comment]: <> (This is a readonly file, do not edit directly, to change update the security_group_get_usage_readme_data.json)
 <img src='../../../../TamnoonPlaybooks/images/icons/Tamnoon.png' width = '200' />
 
 # Tamnoon Investigation Playbook: AWS - Get Security Group Usage
@@ -33,70 +33,70 @@ This playbook describes how to execute Tamnoon EC2Helper automation to get secur
 3. Execute the automation
 
 	1. Using CLI parameters:
-	``````sh
-	python3 -m Automations.EC2Actions \
-	security-group \
-	get_usage \
-	--profile <aws_profile> \
-	--regions <comma separated list of regions or all> \
-	  --assetIds <comma separated securirity group ids or all>  \n  --actionParams <action params here>
-	``````
-	or  
-	``````sh
-	python3 -m Automations.EC2Actions \
-	security-group \
-	get_usage \
-	--awsAccessKey <aws_access_key> \
-	--awsSecret <aws_secret> \
-	--regions <comma separated list of regions or all> \
-	  --assetIds <comma separated securirity group ids or all>  \n  --actionParams <action params here>
-	``````
-	or  
-	``````sh
-	python3 -m Automations.EC2Actions \
-	security-group \
-	get_usage \
-	--awsAccessKey <aws_access_key> \
-	--awsSecret <aws_secret> \
-	--awsSessionToken <specific session token> \
-	--regions <comma separated list of regions or all> \
-	  --assetIds <comma separated securirity group ids or all>  \n  --actionParams <action params here>
-	``````
+		``````sh
+		python3 -m Automations.EC2Actions \
+		security-group \
+		get_usage \
+		--profile <aws_profile> \
+		--regions <comma separated list of regions or all> \
+		  --assetIds <comma separated securirity group ids or all>  \n  --actionParams <action params here>
+		``````
+		or  
+		``````sh
+		python3 -m Automations.EC2Actions \
+		security-group \
+		get_usage \
+		--awsAccessKey <aws_access_key> \
+		--awsSecret <aws_secret> \
+		--regions <comma separated list of regions or all> \
+		  --assetIds <comma separated securirity group ids or all>  \n  --actionParams <action params here>
+		``````
+		or  
+		``````sh
+		python3 -m Automations.EC2Actions \
+		security-group \
+		get_usage \
+		--awsAccessKey <aws_access_key> \
+		--awsSecret <aws_secret> \
+		--awsSessionToken <specific session token> \
+		--regions <comma separated list of regions or all> \
+		  --assetIds <comma separated securirity group ids or all>  \n  --actionParams <action params here>
+		``````
 
-	2. Using YAML file: a yaml file is a text file with a "yml" or "yaml" extension whose content is in the format:
-	``````sh
-	python3 -m Automations.EC2Actions \
-	security-group \
-	get_usage \
-	--file path-to-yml-file
-	``````
-	And the contents of yml/yaml file would look like  
-	``````yaml
-	profile: tamnoon
-	regions: all
-	assetIds: all
-	actionParams:
-	  onlyDefaults: false
-	``````
+	2. Using YAML file: a yaml file is a text file with a "yml" or "yaml" extension whose execution command is in the format:
+		``````sh
+		python3 -m Automations.EC2Actions \
+		security-group \
+		get_usage \
+		--file path-to-yml-file
+		``````
+		And the contents of yml/yaml file would look like  
+		``````yaml
+		profile: tamnoon
+		regions: all
+		assetIds: all
+		actionParams:
+		  onlyDefaults: false
+		``````
 
-	2. Using JSON file: a json file is a text file with a "json" extension whose content is in the format:
-	``````sh
-	python3 -m Automations.EC2Actions \
-	security-group \
-	get_usage \
-	--file path-to-json-file
-	``````
-	And the contents of json file would look like  
-	``````json
-	{
-	  "profile": "tamnoon",  
-	  "regions": "all",  
-	  "assetIds": "all",  
-	  "actionParams":  {  
-	    "onlyDefaults": false  
-	  } 
-	}
-	``````
+	2. Using JSON file: a json file is a text file with a "json" extension whose execution command is in the format:
+		``````sh
+		python3 -m Automations.EC2Actions \
+		security-group \
+		get_usage \
+		--file path-to-json-file
+		``````
+		And the contents of json file would look like  
+		``````json
+		{
+		  "profile": "tamnoon",  
+		  "regions": "all",  
+		  "assetIds": "all",  
+		  "actionParams":  {  
+		    "onlyDefaults": false  
+		  } 
+		}
+		``````
 ### profile - (Optional)
 Use the aws profile for setting up session during automation.
 ### awsAccessKey - (Optional)

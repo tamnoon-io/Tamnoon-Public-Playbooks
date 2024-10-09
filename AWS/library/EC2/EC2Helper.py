@@ -5,6 +5,7 @@ EC2ActionsHelper
 import json
 from time import sleep
 from datetime import datetime, timedelta
+from typing import List
 
 import base64
 import logging
@@ -21,7 +22,7 @@ def parse_tags(tags):
     return parsed_tags
 
 
-def get_imdsv1_details_of_ec2_instance(ec2_client: boto3.Session.client, instance_ids: list[str]):
+def get_imdsv1_details_of_ec2_instance(ec2_client: boto3.Session.client, instance_ids: List[str]):
     is_all_asset_ids = instance_ids == ["all"]
 
     paginator = ec2_client.get_paginator("describe_instances")

@@ -1,5 +1,5 @@
 
-[comment]: <> (This is a readonly file, do not edit directly, to change update the security_group_clean_unused_sg.json)
+[comment]: <> (This is a readonly file, do not edit directly, to change update the security_group_clean_unused_sg_readme_data.json)
 <img src='../../../../TamnoonPlaybooks/images/icons/Tamnoon.png' width = '200' />
 
 # Tamnoon Playbook: AWS - Clean Unused Security Group
@@ -16,7 +16,7 @@ This playbook describes how to remove inbound/outbound rules of unused security 
     After authentication via AWS API, the script execution will run on the same AWS account of those credentials defined in fallbacks 1-3 (see above).
 
 
-2. AWS cretentials defined on the execution machine with permission to change SecurityGroups and its firewall rules.
+3. AWS credentials defined on the execution machine with permission to change SecurityGroups and its firewall rules.
 ## Playbook Steps: 
 
 
@@ -33,68 +33,75 @@ This playbook describes how to remove inbound/outbound rules of unused security 
 3. Execute the automation
 
 	1. Using CLI parameters:
-	``````sh
-	python3 -m Automations.EC2Actions \
-	security-group \
-	clean_unused_sg \
-	--profile <aws_profile> \
-	--regions <The region/s to works on> \
-	--assetIds <comma separated list of security group IDs> \
-	--dryRun<optional dry run>
-	``````
-	or  
-	``````sh
-	python3 -m Automations.EC2Actions \
-	security-group \
-	clean_unused_sg \
-	--awsAccessKey <aws_access_key> \
-	--awsSecret <aws_secret> \
-	--regions <The region/s to works on> \
-	--assetIds <comma separated list of security group IDs> \
-	--dryRun<optional dry run>
-	``````
-	or  
-	``````sh
-	python3 -m Automations.EC2Actions \
-	security-group \
-	clean_unused_sg \
-	--awsAccessKey <aws_access_key> \
-	--awsSecret <aws_secret> \
-	--awsSessionToken <specific session token> \
-	--regions <The region/s to works on> --assetIds <comma separated list of security group IDs> --dryRun<optional dry run>
-	``````
+		``````sh
+		python3 -m Automations.EC2Actions \
+		security-group \
+		clean_unused_sg \
+		--profile <aws_profile> \
+		--regions <The region/s to works on> \
+		--assetIds <comma separated list of security group IDs> \
+		--dryRun <optional dry run>
+		``````
+		or  
+		``````sh
+		python3 -m Automations.EC2Actions \
+		security-group \
+		clean_unused_sg \
+		--awsAccessKey <aws_access_key> \
+		--awsSecret <aws_secret> \
+		--regions <The region/s to works on> \
+		--assetIds <comma separated list of security group IDs> \
+		--dryRun <optional dry run>
+		``````
+		or  
+		``````sh
+		python3 -m Automations.EC2Actions \
+		security-group \
+		clean_unused_sg \
+		--awsAccessKey <aws_access_key> \
+		--awsSecret <aws_secret> \
+		--awsSessionToken <specific session token> \
+		--regions <The region/s to works on> --assetIds <comma separated list of security group IDs> --dryRun <optional dry run>
+		``````
 
-	2. Using YAML file: a yaml file is a text file with a "yml" or "yaml" extension whose content is in the format:
-	``````sh
-	python3 -m Automations.EC2Actions \
-	security-group \
-	clean_unused_sg \
-	--file path-to-yml-file
-	``````
-	And the contents of yml/yaml file would look like  
-	``````yaml
-	regions:
-	  - us-east-1
-	assetIds:
-	  - security-group-id
-	actionParams:
-	  onlyDefaults: false
-	  actionType: clean
-	  deletionTag: false
-	``````
+	2. Using YAML file: a yaml file is a text file with a "yml" or "yaml" extension whose execution command is in the format:
+		``````sh
+		python3 -m Automations.EC2Actions \
+		security-group \
+		clean_unused_sg \
+		--file path-to-yml-file
+		``````
+		And the contents of yml/yaml file would look like  
+		``````yaml
+		regions:
+		  - us-east-1
+		assetIds:
+		  - security-group-id
+		actionParams:
+		  onlyDefaults: false
+		  actionType: clean
+		  deletionTag: false
+		``````
 
-	2. Using JSON file: a json file is a text file with a "json" extension whose content is in the format:
-	``````json
-	{
-	  "regions": ["us-east-1"],
-	  "assetIds": ["security-group-id"],
-	  "actionParams": {
-	    "onlyDefaults":false,
-	    "actionType":"clean",
-	    "deletionTag":false
-	  }
-	}
-	``````
+	2. Using JSON file: a json file is a text file with a "json" extension whose execution command is in the format:
+		``````sh
+		python3 -m Automations.EC2Actions \
+		security-group \
+		clean_unused_sg \
+		--file path-to-json-file
+		``````
+		And the contents of json file would look like  
+		``````json
+		{
+		  "regions": ["us-east-1"],
+		  "assetIds": ["security-group-id"],
+		  "actionParams": {
+		    "onlyDefaults":false,
+		    "actionType":"clean",
+		    "deletionTag":false
+		  }
+		}
+		``````
 ### profile - (Optional)
 Use the aws profile for setting up session during automation.
 ### awsAccessKey - (Optional)

@@ -1,10 +1,12 @@
+from os import path
 import time
+import os
 import json
 import logging
 import yaml
 import botocore
 import boto3
-
+from datetime import datetime
 
 DEFAULT_REGION = "us-east-1"
 
@@ -149,9 +151,14 @@ def build_params(args):
     # Get params from file
     if hasattr(args, "file") and args.file:
         try:
-            with open(args.file, "r") as f:
-                config = yaml.safe_load(f)
-                return Params(config)
+            with open(args.file, "r", encoding="utf8") as f:
+                file_extension = os.path.splitext(args.file)[1]
+                if file_extension in ['.yaml', '.yml', '.YML', '.YAML']:
+                    config = yaml.safe_load(f)
+                    return Params(config)
+                elif file_extension in ['.json', '.JSON']:
+                    config = json.load(f)
+                    return Params(config)
         except Exception as e:
             logging.error(f"Something went wrong with file reading - {e}")
     else:
@@ -171,7 +178,7 @@ def export_data(file_name, output, export_format='JSON'):
     strtime = str(time.time())
     if export_format == 'JSON':
         with open(f"{file_name}-{strtime}.json", "w") as f:
-            json.dump(output, f, ensure_ascii=False, indent=4)
+            json.dump(output, f, ensure_ascii=False, indent=4, default=str)
         logging.info(
             f"Save execution result to - json to path: {file_name}-{strtime}.json"
         )
@@ -255,11 +262,24 @@ def has_single_backslash(s):
     return s.count("\\\\") * 2 != s.count("\\")
 
 
-def TypeActionParams(params):
+def TypeActionParams(params):  # pylint: disable=C0103
+    """
+    to be used for --actionParams path validation in ArgumentParser
+    """
     if has_single_backslash(params):
         raise Exception(
             f"--actionParams should not contain single backslash\n{params}")
     return json.loads(params)
+
+
+def TypePath(params):  # pylint: disable=C0103
+    """
+    to be used for --outDir path validation in ArgumentParser
+    """
+    if not path.exists(params):
+        raise FileNotFoundError(
+            f"--outDir {params}. path does not exists.")
+    return params
 
 
 def get_help_str_valid_types(json_data, arguments, tamnoon_desc_usage):
@@ -283,13 +303,19 @@ def get_help_str_valid_types(json_data, arguments, tamnoon_desc_usage):
         if arguments:
             msg += f"\n{arguments}:\n"
         max_len = 0
+
+        if max_len // 10 == 0:
+            max_len = 10
+
         for key in json_data:
             max_len = max(len(key), max_len)
+        if max_len // 10 == 0:
+            max_len = 10
         for key in json_data:
             suffix = ''.join(
-                [' ' for a in (range(0, max_len-len(key) if len(key) <= max_len else 0))])
+                [' ' for a in (range(0, max_len - len(key) if len(key) <= max_len else 0))])
             msg += f"\n{prefix_if_arguments}" + \
-                key + suffix + " " + json_data[key]
+                   key + suffix + " " + json_data[key]
     else:
         msg += "Help Json Data Is Not Found."
     return msg

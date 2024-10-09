@@ -13,7 +13,8 @@ def log_setup(log_l):
     """This method setup the logging level an params
         logs output path can be controlled by the log stdout cmd param (stdout / file)
     """
-    logging.basicConfig(format='[%(asctime)s -%(levelname)s] (%(processName)-10s) %(message)s')
+    logging.basicConfig(
+        format='[%(asctime)s -%(levelname)s] (%(processName)-10s) %(message)s')
     log_level = log_l
     logging.getLogger().setLevel(log_level)
 
@@ -24,17 +25,17 @@ def print_help():
         '\n '
         '''
 
-\t\t\t ___                                                                                           
-\t\t\t(   )                                                                            .-.           
-\t\t\t | |_       .---.   ___ .-. .-.    ___ .-.     .--.     .--.    ___ .-.         ( __)   .--.   
-\t\t\t(   __)    / .-, \ (   )   '   \  (   )   \   /    \   /    \  (   )   \        (''")  /    \  
-\t\t\t | |      (__) ; |  |  .-.  .-. ;  |  .-. .  |  .-. ; |  .-. ;  |  .-. .         | |  |  .-. ; 
-\t\t\t | | ___    .'`  |  | |  | |  | |  | |  | |  | |  | | | |  | |  | |  | |         | |  | |  | | 
-\t\t\t | |(   )  / .'| |  | |  | |  | |  | |  | |  | |  | | | |  | |  | |  | |         | |  | |  | | 
-\t\t\t | | | |  | /  | |  | |  | |  | |  | |  | |  | |  | | | |  | |  | |  | |         | |  | |  | | 
-\t\t\t | ' | |  ; |  ; |  | |  | |  | |  | |  | |  | '  | | | '  | |  | |  | |   .-.   | |  | '  | | 
-\t\t\t ' `-' ;  ' `-'  |  | |  | |  | |  | |  | |  '  `-' / '  `-' /  | |  | |  (   )  | |  '  `-' / 
-\t\t\t  `.__.   `.__.'_. (___)(___)(___)(___)(___)  `.__.'   `.__.'  (___)(___)  `-'  (___)  `.__.'  
+\t\t\t ___
+\t\t\t(   )                                                                            .-.
+\t\t\t | |_       .---.   ___ .-. .-.    ___ .-.     .--.     .--.    ___ .-.         ( __)   .--.
+\t\t\t(   __)    / .-, \ (   )   '   \  (   )   \   /    \   /    \  (   )   \        (''")  /    \
+\t\t\t | |      (__) ; |  |  .-.  .-. ;  |  .-. .  |  .-. ; |  .-. ;  |  .-. .         | |  |  .-. ;
+\t\t\t | | ___    .'`  |  | |  | |  | |  | |  | |  | |  | | | |  | |  | |  | |         | |  | |  | |
+\t\t\t | |(   )  / .'| |  | |  | |  | |  | |  | |  | |  | | | |  | |  | |  | |         | |  | |  | |
+\t\t\t | | | |  | /  | |  | |  | |  | |  | |  | |  | |  | | | |  | |  | |  | |         | |  | |  | |
+\t\t\t | ' | |  ; |  ; |  | |  | |  | |  | |  | |  | '  | | | '  | |  | |  | |   .-.   | |  | '  | |
+\t\t\t ' `-' ;  ' `-'  |  | |  | |  | |  | |  | |  '  `-' / '  `-' /  | |  | |  (   )  | |  '  `-' /
+\t\t\t  `.__.   `.__.'_. (___)(___)(___)(___)(___)  `.__.'   `.__.'  (___)(___)  `-'  (___)  `.__.'
 
         '''
         '\t\t Welcome To S3 soft remediation \n'
@@ -61,15 +62,15 @@ def print_help():
         '\n\n'
         '\t\t\t Executions Examples:\n'
         '\t\t\t\t python3 S3Helper.py --profile <aws_profile> --action <The S3 action to execute> --bucketNames <The S3 bucket name>\n'
-        '\t\t\t\t --actionParmas <key value dictionary with the action execution params> --revert <true/false if to revert this action>\n\n'
+        '\t\t\t\t --actionParams <key value dictionary with the action execution params> --revert <true/false if to revert this action>\n\n'
         '\t\t\t\t python3 S3Helper.py --profile <aws_profile> --action server_logging  --bucketNames <The S3 bucket name>\n'
-        '\t\t\t\t --actionParmas {"target_bucket":<the target buckt to contain the logs>} --revert <true/false if to revert this action>\n\n'
+        '\t\t\t\t --actionParams {"target_bucket":<the target buckt to contain the logs>} --revert <true/false if to revert this action>\n\n'
         '\t\t\t\t python3 S3Helper.py --profile <aws_profile> --action encryption  --bucketNames <The S3 bucket name> \n'
-        '\t\t\t\t --actionParmas {"kms":<the target buckt to contain the logs>} --revert <true/false if to revert this action>\n\n'
+        '\t\t\t\t --actionParams {"kms":<the target buckt to contain the logs>} --revert <true/false if to revert this action>\n\n'
         '\t\t\t\t python3 S3Helper.py --profile <aws_profile> --action versioning  --bucketNames <The S3 bucket name>\n'
         '\t\t\t\t --revert <true/false if to revert this action>\n\n'
         '\t\t\t\t python3 S3Helper.py --profile <aws_profile> --action mfa_protection  --bucketNames <The S3 bucket name>\n'
-        '\t\t\t\t --actionParmas {"mfa":<The concatenation of the authentication devices serial number, a space, and the value that is displayed on your authentication device>}  --revert <true/false if to revert this action>\n\n'
+        '\t\t\t\t --actionParams {"mfa":<The concatenation of the authentication devices serial number, a space, and the value that is displayed on your authentication device>}  --revert <true/false if to revert this action>\n\n'
 
         '\n\n'
         '\t\t\t Parameter Usage:\n'
@@ -79,7 +80,7 @@ def print_help():
         '\t\t\t\t\t * for mfa_protection you have to execute the script as the root user of the account according to: \n'
         '\t\t\t\t\t https://docs.aws.amazon.com/AmazonS3/latest/userguide/MultiFactorAuthenticationDelete.html\n'
         '\t\t\t\t bucketNames - List of The bucket names for example b1,b2,b3\n'
-        '\t\t\t\t actionParmas  - A key value Dictionary of action params"\n'
+        '\t\t\t\t actionParams  - A key value Dictionary of action params"\n'
         '\t\t\t\t revert  - A true false flag to a sign if this action need to revert"\n'
         '\n\n'
 
@@ -102,7 +103,8 @@ def do_logging(client, bucket_name, target_bucket_name, is_revert=False):
     :return:
     '''
     if is_revert:
-        logging.info(f"Going to revert server logging for bucket - {bucket_name}")
+        logging.info(
+            f"Going to revert server logging for bucket - {bucket_name}")
         req_element = {}
 
     else:
@@ -132,7 +134,8 @@ def do_encryption(client, bucket_name, kms_key_id, is_revert=False):
         return True
 
     if kms_key_id:
-        logging.info(f"Going to encrypt bucket - {bucket_name} using kms key- {kms_key_id}")
+        logging.info(
+            f"Going to encrypt bucket - {bucket_name} using kms key- {kms_key_id}")
         rule = {
             'ApplyServerSideEncryptionByDefault': {
                 'SSEAlgorithm': 'aws:kms',
@@ -141,7 +144,8 @@ def do_encryption(client, bucket_name, kms_key_id, is_revert=False):
             'BucketKeyEnabled': False
         }
     else:
-        logging.info(f"Going to encrypt bucket - {bucket_name} using aws:s3 key")
+        logging.info(
+            f"Going to encrypt bucket - {bucket_name} using aws:s3 key")
         rule = {
             'ApplyServerSideEncryptionByDefault': {
                 'SSEAlgorithm': 'AES256'
@@ -159,7 +163,8 @@ def do_encryption(client, bucket_name, kms_key_id, is_revert=False):
 
 def do_versioning(client, bucket_name, is_revert=False):
     if is_revert:
-        logging.info(f"Going to remove versioning  from bucket - {bucket_name}")
+        logging.info(
+            f"Going to remove versioning  from bucket - {bucket_name}")
         response = client.put_bucket_versioning(
             Bucket=bucket_name,
             VersioningConfiguration={
@@ -185,7 +190,8 @@ def do_mfa_protection(client, bucket_name, mfa):
     versioning_status = response['Status']
 
     if is_revert:
-        logging.info(f"Going to remove mfa deletion protection from bucket - {bucket_name}")
+        logging.info(
+            f"Going to remove mfa deletion protection from bucket - {bucket_name}")
         response = client.put_bucket_versioning(
             Bucket=bucket_name,
             VersioningConfiguration={
@@ -195,7 +201,8 @@ def do_mfa_protection(client, bucket_name, mfa):
             }
         )
     else:
-        logging.info(f"Going to add mfa deletion protection to bucket - {bucket_name}")
+        logging.info(
+            f"Going to add mfa deletion protection to bucket - {bucket_name}")
         response = client.put_bucket_versioning(
             Bucket=bucket_name,
             MFA=mfa,
@@ -206,7 +213,7 @@ def do_mfa_protection(client, bucket_name, mfa):
         )
 
 
-def do_block_public_access(block_public_acl, ignore_public_acl, block_public_policy, restrict_public_bucket,
+def do_block_public_access(client, block_public_acl, ignore_public_acl, block_public_policy, restrict_public_bucket,
                            bucket_name):
     logging.info(f"Going to block public access to bucket- {bucket_name}")
     response = client.put_public_access_block(
@@ -227,8 +234,8 @@ def do_s3_ls(client, bucket_name):
 def _check_statment_exist(statement, curr_policy):
     for sts in curr_policy['Statement']:
         if sts['Effect'] == statement['Effect'] and sts['Principal'] == statement['Principal'] and sts['Action'] == \
-                statement['Action'] and sts['Condition'] == statement['Condition'] and sorted(
-            sts['Resource']) == sorted(statement['Resource']):
+            statement['Action'] and sts['Condition'] == statement['Condition'] and sorted(
+                sts['Resource']) == sorted(statement['Resource']):
             return True
     return False
 
@@ -269,13 +276,59 @@ def do_block_http(client, bucket_name):
             return
     except botocore.exceptions.ClientError as e:
         if 'Error' in e.response and 'Code' in e.response['Error'] and e.response['Error'][
-            'Code'] == 'NoSuchBucketPolicy':
+                'Code'] == 'NoSuchBucketPolicy':
             response = client.put_bucket_policy(
                 Bucket=bucket_name,
                 Policy=json.dumps(policy)
             )
 
     logging.info(f"Bucket policy created/updated with http deny policy")
+
+
+def do_check_public_access_logs(session, client, list_of_buckets, action_params, account_id):
+    from .S3BucketsServerAccessLogs import check_public_access_logs
+    region_data = {}
+    buckets = list()
+    try:
+        response = client.list_buckets()
+        for bucket in response["Buckets"]:
+            bucket_name = bucket["Name"]
+        buckets = list(
+            map(
+                lambda bucket: bucket['Name'],
+                list(
+                    filter(
+                        lambda bucket: (len(
+                            list_of_buckets) == 1 and list_of_buckets[0] == "all") or bucket["Name"] in list_of_buckets,
+                        response["Buckets"]
+                    )
+                )
+            )
+        )
+    except botocore.exceptions.ClientError as ce:
+        if ce.response["Error"]["Code"] == "AccessDenied":
+            logging.exception(
+                f"This account does not have access to list the buckets.")
+        else:
+            logging.exception(f"Something went wrong.", exc_info=True)
+        return {}
+    except Exception as ex:
+        logging.exception(f"Something went wrong.", exc_info=True)
+        return {}
+
+    for bucket_name in buckets:
+        region_data.update({bucket_name: check_public_access_logs(
+            session, bucket_name, action_params, account_id)})
+
+    if len(region_data.values()) == 0:
+        if len(list_of_buckets) > 0:
+            if list_of_buckets[0] != "all":
+                for bucket_name in list_of_buckets:
+                    region_data[bucket_name] = "bucket not found"
+            else:
+                region_data['all'] = "buckets not found"
+
+    return region_data
 
 
 def do_check_public_access(session, client, list_of_buckets, account_id):
@@ -291,13 +344,15 @@ def do_check_public_access(session, client, list_of_buckets, account_id):
             bucket_name = bucket["Name"]
         buckets = list(
             filter(
-                lambda bucket: (len(list_of_buckets) == 1 and list_of_buckets[0] == "all") or bucket["Name"] in list_of_buckets,
+                lambda bucket: (len(
+                    list_of_buckets) == 1 and list_of_buckets[0] == "all") or bucket["Name"] in list_of_buckets,
                 response["Buckets"]
             )
         )
     except botocore.exceptions.ClientError as ce:
         if ce.response["Error"]["Code"] == "AccessDenied":
-            logging.exception(f"This account does not have access to list the buckets.", exc_info=True)
+            logging.exception(
+                f"This account does not have access to list the buckets.", exc_info=True)
         else:
             logging.exception(f"Something went wrong.", exc_info=True)
         return {}
@@ -305,18 +360,19 @@ def do_check_public_access(session, client, list_of_buckets, account_id):
         logging.exception(f"Something went wrong.", exc_info=True)
         return {}
 
-    region_data = find_buckets_bpa(session, buckets, caller_identity['Account'])
+    region_data = find_buckets_bpa(
+        session, buckets, account_id)
     found_buckets = region_data["Buckets"].keys()
     if len(found_buckets) < len(list_of_buckets):
         if list_of_buckets != ["all"]:
             for bucket_name in list_of_buckets:
                 if bucket_name not in found_buckets:
                     region_data["Buckets"][bucket_name] = "bucket not found"
-                    logging.exception(f"bucket {bucket_name} not found", exc_info=False)
+                    logging.exception(
+                        f"bucket {bucket_name} not found", exc_info=False)
         else:
             region_data["Buckets"]['all'] = "buckets not found"
             logging.exception(f"There are no buckets", exc_info=False)
-
 
     return region_data
 
@@ -327,10 +383,12 @@ def _do_action(list_of_buckets, session, is_revert, action, params, caller_ident
         logging.info(f"Going to work on bucket - {bucket_name}")
         if action == 'server_logging':
             if not params:
-                logging.error(f"Action - server_logging must include action params property")
+                logging.error(
+                    f"Action - server_logging must include action params property")
                 exit(1)
             if "target_bucket" not in params:
-                logging.error(f"Action - server_logging must include target_bucket param in the action params property")
+                logging.error(
+                    f"Action - server_logging must include target_bucket param in the action params property")
                 exit(1)
             do_logging(client=client, bucket_name=bucket_name, target_bucket_name=params['target_bucket'],
                        is_revert=is_revert)
@@ -339,17 +397,21 @@ def _do_action(list_of_buckets, session, is_revert, action, params, caller_ident
             kms_key_id = None
             if params and 'kms' in params:
                 kms_key_id = params['kms']
-            do_encryption(client=client, bucket_name=bucket_name, kms_key_id=kms_key_id, is_revert=is_revert)
+            do_encryption(client=client, bucket_name=bucket_name,
+                          kms_key_id=kms_key_id, is_revert=is_revert)
 
         if action == "versioning":
-            do_versioning(client=client, bucket_name=bucket_name, is_revert=is_revert)
+            do_versioning(client=client, bucket_name=bucket_name,
+                          is_revert=is_revert)
 
         if action == "mfa_protection":
             if not params:
-                logging.error(f"Action - mfa_protection must include action params property")
+                logging.error(
+                    f"Action - mfa_protection must include action params property")
                 exit(1)
             if "mfa" not in params:
-                logging.error(f"Action - mfa_protection must include mfa param in the action params property")
+                logging.error(
+                    f"Action - mfa_protection must include mfa param in the action params property")
                 exit(1)
             mfa = params['mfa']
             do_mfa_protection(client=client, bucket_name=bucket_name, mfa=mfa)
@@ -365,19 +427,23 @@ def _do_action(list_of_buckets, session, is_revert, action, params, caller_ident
                 ignore_public_acl = params['IgnorePublicAcls'] if "IgnorePublicAcls" in params else False
                 block_public_policy = params["BlockPublicPolicy"] if "BlockPublicPolicy" in params else False
                 restrict_public_bucket = params["RestrictPublicBuckets"] if "RestrictPublicBuckets" in params else False
-            do_block_public_access(block_public_acl=block_public_acl, ignore_public_acl=ignore_public_acl,
+            do_block_public_access(client=client,
+                                   bucket_name=bucket_name,
+                                   block_public_acl=block_public_acl,
+                                   ignore_public_acl=ignore_public_acl,
                                    block_public_policy=block_public_policy,
-                                   restrict_public_bucket=restrict_public_bucket, bucket_name=bucket_name)
+                                   restrict_public_bucket=restrict_public_bucket)
 
         if action == "check_public_access":
-            account_id = caller_identity['Account']
-            return do_check_public_access(session, client, list_of_buckets, account_id)
+            return do_check_public_access(session, client, list_of_buckets, caller_identity['Account'])
+        if action == "check_public_access_logs":
+            return do_check_public_access_logs(session, client, list_of_buckets, params, caller_identity['Account'])
 
-        if action == "ls":
-            do_s3_ls(client=client, bucket_name=bucket_name)
+    if action == "ls":
+        do_s3_ls(client=client, bucket_name=bucket_name)
 
-        if action == "block_http":
-            do_block_http(client=client, bucket_name=bucket_name)
+    if action == "block_http":
+        do_block_http(client=client, bucket_name=bucket_name)
 
 
 if __name__ == '__main__':
@@ -386,19 +452,22 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--logLevel', required=False, type=str, default="INFO")
     parser.add_argument('--profile', required=False, default=None)
-    parser.add_argument('--awsAccessKey', required=False, type=str, default=None)
+    parser.add_argument('--awsAccessKey', required=False,
+                        type=str, default=None)
     parser.add_argument('--awsSecret', required=False, type=str, default=None)
-    parser.add_argument('--awsSessionToken', required=False, type=str, default=None)
+    parser.add_argument('--awsSessionToken', required=False,
+                        type=str, default=None)
     parser.add_argument('--action', required=True, type=str)
     parser.add_argument('--bucketNames', required=True, type=str)
-    parser.add_argument('--actionParmas', required=False, type=str, default=None)
+    parser.add_argument('--actionParams', required=False,
+                        type=str, default=None)
     parser.add_argument('--revert', required=False, type=bool, default=None)
     parser.add_argument('--regions', required=False, type=str, default=None)
     parser.add_argument(
         "--outputDirectory", required=False, type=str, default=os.getcwd()
     )
-    parser.add_argument("--outputType", required=False, type=str, default="JSON")
-
+    parser.add_argument("--outputType", required=False,
+                        type=str, default="JSON")
 
     if len(sys.argv) == 1 or '--help' in sys.argv or '-h' in sys.argv:
         print_help()
@@ -418,7 +487,7 @@ if __name__ == '__main__':
     regions = args.regions
     bucket_names = args.bucketNames
     list_of_buckets = bucket_names.split(',')
-    params = json.loads(args.actionParmas) if args.actionParmas else None
+    params = json.loads(args.actionParams) if args.actionParams else None
     is_revert = args.revert if args.revert else False
 
     if regions:
@@ -429,13 +498,13 @@ if __name__ == '__main__':
             regions = list_of_regions[0]
 
     session = utils.setup_session(profile=profile, region=regions, aws_access_key=aws_access_key,
-                                aws_secret=aws_secret, aws_session_token=aws_session_token)
+                                  aws_secret=aws_secret, aws_session_token=aws_session_token)
     caller_identity = utils.get_caller_identity(session=session)
     result['caller-identity'] = caller_identity
 
     logging.info(f"Working on Region - {session.region_name}")
     action_result = _do_action(list_of_buckets=list_of_buckets, session=session, is_revert=is_revert,
-                            action=action, params=params, caller_identity=caller_identity)
+                               action=action, params=params, caller_identity=caller_identity)
     if action_result:
         result[session.region_name] = action_result
     else:

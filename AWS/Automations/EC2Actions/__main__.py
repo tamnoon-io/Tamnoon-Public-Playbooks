@@ -12,14 +12,14 @@ from argparse import (
     _ArgumentGroup,
     RawTextHelpFormatter,
 )
-from typing import Callable, Union
+from typing import Callable, Union, Dict
 from Automations.CloudWatchActions import GetAllFlowlogs
 from library.EC2 import (
-    EC2Helper, LoadBalancersHelper, SecurityGroupHelper,
+    ALBHelper, EC2Helper, LoadBalancersHelper, SecurityGroupHelper,
     SnapshotHelper, SubnetHelper, VPCHelper
 )
 from library.EC2.types import (
-    EC2Types, EC2TypeActions, SnapshotTypeActions,
+    ApplicationLoadBalancerTypeActions, EC2Types, EC2TypeActions, SnapshotTypeActions,
     SecurityGroupTypeActions, SubnetTypeActions, VPCTypeActions
 )
 import Automations.Utils.utils as utils
@@ -93,6 +93,11 @@ subnet_disable_public_ip_assignment_readme_data = (
     if hasattr(help_jsons_data, "subnet_disable_public_ip_assignment_readme_data")
     else dict()
 )
+alb_redirect_to_https_readme_data = (
+    help_jsons_data.alb_redirect_to_https_readme_data
+    if hasattr(help_jsons_data, "alb_redirect_to_https_readme_data")
+    else dict()
+)
 common_json_data = (
     help_jsons_data.common_json_data
     if hasattr(help_jsons_data, "common_json_data")
@@ -101,11 +106,11 @@ common_json_data = (
 
 
 def _snapshot_delete_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory,
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
 ):
     """
     This function is wrapper for AWS.library.SnapshotHelper.do_snapshot_delete,
@@ -137,11 +142,11 @@ def _snapshot_delete_wrapper(
 
 
 def _snapshot_list_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory
 ):
     """
     This function is wrapper for AWS.library.SnapshotHelper.do_snapshot_ls.
@@ -162,11 +167,11 @@ def _snapshot_list_wrapper(
 
 
 def _snapshot_encrypt_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory,
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
 ):
     """
     This function is wrapper for AWS.library.SnapshotHelper.do_snapshot_encrypt.
@@ -201,11 +206,11 @@ def _snapshot_encrypt_wrapper(
 
 
 def _sg_clean_unused_sg_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory,
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
 ):
     """
         This function is wrapper for AWS.library.SecurityGroupHelper.clean_unused_sg.
@@ -255,11 +260,11 @@ s
 
 
 def _sg_delete_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory
 ):
     """
         This function is wrapper for AWS.library.SecurityGroupHelper.do_sg_delete.
@@ -287,11 +292,11 @@ def _sg_delete_wrapper(
 
 
 def _sg_get_usage_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory
 ):
     """
         This function is wrapper for AWS.Automations.CloudWatchActions.GetAllFlowlogs.get_sg_usage.
@@ -323,7 +328,7 @@ def _sg_get_usage_wrapper(
                 if (is_all_security_groups or x["GroupId"] in asset_ids)
             ]
         )
-        > 0
+           > 0
     ]
 
     result = SecurityGroupHelper.get_sg_usage(
@@ -340,11 +345,11 @@ def _sg_get_usage_wrapper(
 
 
 def _sg_get_all_flow_logs_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory,
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
 ):
     """
         This function is wrapper for AWS.Automations.CloudWatchActions.GetAllFlowlogs.get_sgs.
@@ -366,7 +371,7 @@ def _sg_get_all_flow_logs_wrapper(
         exit(0)
     exclude_private_ips_from_source = (
         action_params["excludePrivateIPsFromSource"].lower() == "true"
-        if action_params is None and "excludePrivateIPsFromSource" in action_params
+        if action_params and "excludePrivateIPsFromSource" in action_params
         else True
     )
     hoursback = (
@@ -391,15 +396,15 @@ def _sg_get_all_flow_logs_wrapper(
                     1
                     for x in sg["SGRules"]
                     if (is_all_security_groups or x["GroupId"] in asset_ids)
-                    and x["IsEgress"] is False
-                    and x.get("CidrIpv4") == "0.0.0.0/0"
-                    and not (
+                       and x["IsEgress"] is False
+                       and x.get("CidrIpv4") == "0.0.0.0/0"
+                       and not (
                         x.get("IpProtocol") == "tcp" and x.get(
-                            "FromPort") == 443
-                    )
+                    "FromPort") == 443
+                )
                 ]
             )
-            > 0
+               > 0
         ]
     else:
         interestinggroups = [x for x in asset_ids if x.find("sg-") == 0]
@@ -423,11 +428,11 @@ def _sg_get_all_flow_logs_wrapper(
 
 
 def _remove_or_replace_rules_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory,
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
 ):
     """
         This function is wrapper for AWS.library.SecurityGroupHelper.\
@@ -464,11 +469,11 @@ def _remove_or_replace_rules_wrapper(
 
 
 def _vpc_create_flow_log_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory,
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
 ):
     """
         This function is the implementation for security group actions
@@ -541,11 +546,11 @@ def _vpc_create_flow_log_wrapper(
 
 
 def _ec2_get_imdsv1_usage_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory,
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
 ):
     """
         This function is the implementation for security group actions
@@ -577,11 +582,11 @@ def _ec2_get_imdsv1_usage_wrapper(
 
 
 def _ec2_enforce_imdsv2_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory,
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
 ):
     """
         This function is the implementation for security group actions
@@ -630,11 +635,11 @@ def _ec2_enforce_imdsv2_wrapper(
 
 
 def _ec2_find_load_balancers_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory,
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
 ):
     """
         This function is the implementation for security group actions
@@ -650,11 +655,11 @@ def _ec2_find_load_balancers_wrapper(
 
 
 def _subnet_disable_public_ip_assignment_wrapper(
-    session,
-    dry_run,
-    asset_ids,
-    action_params,
-    output_directory,
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
 ):
     """
         This is the subnet helper function to execute automation over AWS subnet using boto3 api
@@ -688,7 +693,44 @@ def _subnet_disable_public_ip_assignment_wrapper(
     )
 
 
-functions_mapping: dict[str, dict[str, Callable]] = {
+def _alb_redirect_to_https_wrapper(
+        session,
+        dry_run,
+        asset_ids,
+        action_params,
+        output_directory,
+):
+    """
+    This function is wrapper for AWS.library.ELB.ALBHelper.do_redirect_to_https,
+    which is called over all asset_ids.
+
+    :param session: boto3 session
+    :param asset_ids: list of asset ids
+    :param dry_run: Boolean flag to mark if this is dry run or not
+    :param *action_params: used for rollback and state path to be used in rollback
+    :param *output_directory: unused variable. If found, this will be freed from memory
+    :return:
+    """
+    del output_directory
+    action_params_valid = ALBHelper.validate_action_params(action_params)
+    if action_params_valid:
+        is_roll_back = "rollBack" in action_params and action_params["rollBack"]
+        if is_roll_back:
+            is_roll_back = "rollBack" in action_params and action_params["rollBack"]
+        if is_roll_back:
+            return ALBHelper.rollback_do_redirect_to_https(
+                session=session,
+                last_execution_state_path=action_params["statePath"],
+                dry_run=dry_run,
+            )
+        return ALBHelper.do_redirect_to_http(
+            session=session,
+            dry_run=dry_run,
+            alb_names=asset_ids,
+        )
+
+
+functions_mapping: Dict[str, Dict[str, Callable]] = {
     EC2Types.SNAPSHOT.value: {
         SnapshotTypeActions.DELETE.value: _snapshot_delete_wrapper,
         SnapshotTypeActions.LIST.value: _snapshot_list_wrapper,
@@ -713,19 +755,25 @@ functions_mapping: dict[str, dict[str, Callable]] = {
         SubnetTypeActions.DISABLE_PUBLIC_IP_ASSIGNMENT.value:
             _subnet_disable_public_ip_assignment_wrapper,
     },
+    EC2Types.ALB.value: {
+        ApplicationLoadBalancerTypeActions.REDIRECT_TO_HTTPS.value: _alb_redirect_to_https_wrapper
+    },
 }
-help_mappings: dict[str, dict[str, dict]] = {
+help_mappings: Dict[str, Dict[str, dict]] = {
     EC2Types.SNAPSHOT.value: {
         SnapshotTypeActions.DELETE.value: snapshot_delete_readme_data.get("cli_args", dict()),
         SnapshotTypeActions.LIST.value: snapshot_ls_readme_data.get("cli_args", dict()),
         SnapshotTypeActions.ENCRYPT.value: snapshot_encrypt_readme_data.get("cli_args", dict()),
     },
     EC2Types.SG.value: {
-        SecurityGroupTypeActions.CLEAN_UNUSED_SG.value: security_group_clean_unused_sg_readme_data.get("cli_args", dict()),
+        SecurityGroupTypeActions.CLEAN_UNUSED_SG.value: security_group_clean_unused_sg_readme_data.get("cli_args",
+                                                                                                       dict()),
         SecurityGroupTypeActions.DELETE.value: security_group_delete_readme_data.get("cli_args", dict()),
-        SecurityGroupTypeActions.GET_ALL_FLOW_LOGS.value: security_group_get_all_flow_logs_readme_data.get("cli_args", dict()),
+        SecurityGroupTypeActions.GET_ALL_FLOW_LOGS.value: security_group_get_all_flow_logs_readme_data.get("cli_args",
+                                                                                                           dict()),
         SecurityGroupTypeActions.GET_USAGE.value: security_group_get_usage_readme_data.get("cli_args", dict()),
-        SecurityGroupTypeActions.REMOVE_OR_REPLACE_RULES.value: security_group_remove_or_replace_rules_readme_data.get("cli_args", dict()),
+        SecurityGroupTypeActions.REMOVE_OR_REPLACE_RULES.value: security_group_remove_or_replace_rules_readme_data.get(
+            "cli_args", dict()),
     },
     EC2Types.VPC.value: {
         VPCTypeActions.CREATE_FLOW_LOG.value: vpc_create_flow_log_readme_data.get("cli_args", {}),
@@ -736,7 +784,12 @@ help_mappings: dict[str, dict[str, dict]] = {
         EC2TypeActions.FIND_LOAD_BALANCERS.value: ec2_find_load_balancers_readme_data.get("cli_args", dict()),
     },
     EC2Types.SUBNET.value: {
-        SubnetTypeActions.DISABLE_PUBLIC_IP_ASSIGNMENT.value: subnet_disable_public_ip_assignment_readme_data.get("cli_args", dict()),
+        SubnetTypeActions.DISABLE_PUBLIC_IP_ASSIGNMENT.value: subnet_disable_public_ip_assignment_readme_data.get(
+            "cli_args", dict()),
+    },
+    EC2Types.ALB.value: {
+        ApplicationLoadBalancerTypeActions.REDIRECT_TO_HTTPS.value: alb_redirect_to_https_readme_data.get(
+            "cli_args", dict())
     },
 }
 
@@ -745,9 +798,9 @@ if not help_mappings:
 
 
 def common_args(
-    parser: Union[ArgumentParser, _ArgumentGroup],
-    args_json_data: dict,
-    has_dry_run: bool = True
+        parser: Union[ArgumentParser, _ArgumentGroup],
+        args_json_data: dict,
+        has_dry_run: bool = True
 ):
     """adds common arguments to the parser"""
     parser.add_argument(
@@ -1307,6 +1360,60 @@ def subnet_args_parser(subnet_type_parser: ArgumentParser):
     )
 
 
+def alb_args_parser(alb_type_parser: ArgumentParser):
+    """ adds alb parser & subparser """
+    # define alb actions parsers here
+    # metavar=" or ".join(
+    #     [value.value for value in ApplicationLoadBalancerTypeActions])
+    alb_action_subparser = alb_type_parser.add_subparsers(
+        title="action",
+        metavar="",
+        dest="action",
+        description=utils.type_help(
+            {
+                ApplicationLoadBalancerTypeActions.REDIRECT_TO_HTTPS.value: alb_redirect_to_https_readme_data.get(
+                    "help", "")
+            })
+    )
+    # define alb actions parsers here
+    alb_type_redirect_to_https_action_parser = alb_action_subparser.add_parser(
+        ApplicationLoadBalancerTypeActions.REDIRECT_TO_HTTPS.value,
+        # help=help_value,
+        description=alb_redirect_to_https_readme_data.get("help"),
+        formatter_class=RawTextHelpFormatter
+
+    )
+
+    # define alb redirect to https action arguments here
+    alb_type_delete_action_group = (
+        alb_type_redirect_to_https_action_parser.add_argument_group(
+            ApplicationLoadBalancerTypeActions.REDIRECT_TO_HTTPS.value
+        )
+    )
+    common_args(alb_type_delete_action_group,
+                alb_redirect_to_https_readme_data.get("cli_args", dict()),
+                has_dry_run=True)
+    alb_type_delete_action_group.add_argument(
+        "--assetIds",
+        type=str,
+        metavar="",
+        default='all',
+        help=help_mappings[EC2Types.ALB.value][
+            ApplicationLoadBalancerTypeActions.REDIRECT_TO_HTTPS.value
+        ].get("assetIds", "")
+    )
+    alb_type_delete_action_group.add_argument(
+        "--actionParams",
+        required=False,
+        metavar="",
+        type=utils.TypeActionParams,
+        default=dict(),
+        help=help_mappings[EC2Types.ALB.value][
+            ApplicationLoadBalancerTypeActions.REDIRECT_TO_HTTPS.value
+        ].get("actionParams", ""),
+    )
+
+
 def main(argv: list = []):
     """
     main function
@@ -1365,6 +1472,13 @@ def main(argv: list = []):
         formatter_class=RawTextHelpFormatter
     )
     subnet_args_parser(subnet_type_parser=subnet_type_parser)
+    # define asset type parsers here
+    alb_type_parser = type_subparser.add_parser(
+        name=EC2Types.ALB.value, description=common_json_data.get(
+            "help", {}).get('alb', {}).get(EC2Types.ALB.value),
+        formatter_class=RawTextHelpFormatter
+    )
+    alb_args_parser(alb_type_parser)
 
     cli_args = parser.parse_args(argv[1:])
     params = utils.build_params(args=cli_args)
@@ -1395,7 +1509,7 @@ def main(argv: list = []):
             'actionParams', None) if cli_args.file is not None else params.actionParams
 
         action_params = json.loads(action_params) if action_params and not isinstance(
-            action_params, dict) else params.get('actionParams', None)
+            action_params, dict) else params.get('actionParams', dict())
 
         regions = ",".join(
             params.get('regions', ['all'])
@@ -1407,8 +1521,8 @@ def main(argv: list = []):
             "outDir", "") if cli_args.file is not None else str(params.outDir)
         test_id = params.get(
             "testId", None) if cli_args.file is not None else str(params.testId)
-        if test_id is not None:
-            result['testId'] = test_id
+        if test_id:
+            result["testId"] = test_id
 
         utils.log_setup(log_level)
         logging.debug("python3 -m Automatios.EC2Actions %s",
@@ -1479,13 +1593,10 @@ def main(argv: list = []):
 
     result_type = "dryrun" if dry_run else "execution"
 
-    if params.testId:
-        result["testId"] = params.testId
-
     if not output_directory.endswith("/"):
         output_directory = str(output_directory) + "/"
     result["stateFile"] = utils.export_data_filename_with_timestamp(
-        f"{output_directory}Tamnoon-Azure-Storage-{asset_type if asset_type is not None else ''}-{asset_action.replace('_', '-') if asset_action is not None else ''}-{result_type}-result",
+        f"{output_directory}Tamnoon-AWS-{asset_type if asset_type is not None else ''}-{asset_action.replace('_', '-') if asset_action is not None else ''}-{result_type}-result",
         output_type,
     )
     utils.export_data_(

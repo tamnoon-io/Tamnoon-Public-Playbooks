@@ -1,13 +1,14 @@
-import sys
+"""
+initialize module IAMActions
+"""
 import os
+import sys
 
-___directory_depth = 2
-___relative_path = "TamnoonPlaybooks/"
+___DIRECTORY_DEPTH = 2
+___RELATIVE_PATH = "TamnoonPlaybooks/AWS/"
 
 ___splits = sys.path[0].split("/")
 ___import_path = os.path.join(
-    "/".join(___splits[0 : ___splits.__len__() - ___directory_depth]), ___relative_path
+    "/".join(___splits[0 : len(___splits) - ___DIRECTORY_DEPTH]), ___RELATIVE_PATH
 )
-
-if ___import_path not in sys.path:
-    sys.path.append(___import_path)
+sys.path.append(___import_path)

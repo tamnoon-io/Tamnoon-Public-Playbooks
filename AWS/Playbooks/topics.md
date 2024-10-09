@@ -1,5 +1,38 @@
 
 
+### alb - 	redirect_to_https
+[TPlaybook_alb_redirect_to_https.md](../Playbooks/EC2Actions/TPlaybook_alb_redirect_to_https.md)
+  
+**Topics** - Application Load Balancer, EC2, Forward, HTTP, HTTPS, Load Balancer, Redirect
+
+This automation describes how to execute Tamnoon automation to change Application Load Balancer listener actions rules that **forward** http (port 80) requests to https (port 443). Modified rules will **redirect** similar requests from http (port 80) to https (port 443) instead. This automation will also update default action of such listener with similar redirect action.  
+### cloudtrail - 	no-action
+[TImpact_cloudtrail.md](../Playbooks/LogsInvestigations/TImpact_cloudtrail.md)
+  
+**Topics** - cloudtrail, trails logs, athena
+
+This automation describes how to execute Tamnoon Logs Investigation automation to find cloudtrail trail logs stored in s3 bucket. This is done
+by finding QueryFieldName & its Value from s3 bucket of cloudtrail trail. This automation supports finding activity from the day s3 bucket configured for storing CloudTrail trail logs *to at least 0.01 recent days (~ 15 recent minutes).*  
+### describe-stack-resources - 	is_created_by_cfn
+[TImpact_CloudFormation_describe_stack_resources_is_created_by_cfn.md](../Playbooks/CloudFormation/TImpact_CloudFormation_describe_stack_resources_is_created_by_cfn.md)
+  
+**Topics** - cloudformation, ec2 instance, s3 bucket,lambda functions,ecs,ebs, arn, cloudformation stack
+
+This automation describes how to execute Tamnoon CloudFormation automation to determine whether the provided resource arn is deployed by CloudFormation stack and also determines the associations/relationships for resource arns of type Elatic Beanstalk, EC2 AutoScaling Groups etc.  
+### describe-stack-resources - 	security_groups
+[TImpact_CloudFormation_describe_stack_resources_security_groups.md](../Playbooks/CloudFormation/TImpact_CloudFormation_describe_stack_resources_security_groups.md)
+  
+**Topics** - cloudformation, security groups, cloudformation stack
+
+This automation describes how to execute Tamnoon CloudFormation automation to determine whether the provided security group is deployed by a CloudFormation stack and to provide details about resources deployed by the stack.  
+### ebs - 	encryption
+[TPlaybook_ebs_encryption.md](../Playbooks/EBSEncryption/TPlaybook_ebs_encryption.md)
+  
+**Topics** - EBS, Encryption, AWS EBS Service
+
+This playbook describes how to remediate unencrypted EBS Volumes automatically. 
+Amazon EBS encrypted volumes provide an additional layer of data protection by securing your data from unauthorized access to the underlying storage.
+You can use Amazon EBS encryption to increase the data protection of your applications deployed in the cloud and to fulfill compliance requirements for encryption at rest.  
 ### ec2 - 	enforce_imdsv2
 [TPlaybook_ec2_enforce_imdsv2.md](../Playbooks/EC2Actions/TPlaybook_ec2_enforce_imdsv2.md)
   
@@ -31,6 +64,114 @@ This automation is same as querying the CloudWatch metric MetadataNoToken on AWS
 4. Change the timeframe to be 2W
 
 All Instances that this metric is 0 for them are found by this Automation, for which we can enable IMDSv2 using [IMDSv2 Automation](https://github.com/tamnoon-io/Tamnoon-Public-Playbooks/blob/main/AWS/EC2/TPlaybook_set_IMDSv2.md).  
+### events-history - 	no-action
+[TImpact_events_history.md](../Playbooks/LogsInvestigations/TImpact_events_history.md)
+  
+**Topics** - Events History, LookUpEvents API, SDK API
+
+This automation describes how to execute Tamnoon Logs Investigation automation to find events history of cloudtrail. This is done
+by finding AttributeKey & its AttributeValue from events history of cloudtrail. This automation supports finding activity from *at most 90 recent days* to *at least 0.01 recent days (~ 15 recent minutes)*.  
+### iam-user - 	deactivate_access_key
+[TPlaybook_IAMUser_deactivate_user_access_key.md](../Playbooks/IAMActions/TPlaybook_IAMUser_deactivate_user_access_key.md)
+  
+**Topics** - IAM Users, IAMUser Deactivate Access Key, AWS IAM Service
+
+This playbook describes how to execute Tamnoon IAMHelper automation to deactivate AccessKeys.  
+### iam-user - 	delete
+[TPlaybook_delete_IAMUser.md](../Playbooks/IAMActions/TPlaybook_delete_IAMUser.md)
+  
+**Topics** - IAM, Delete IAMUser, AWS IAM Service
+
+This playbook describes how to execute Tamnoon IAMHelper automation to delete IAM User.  
+### iam-user - 	last_activity
+[TImpact_last_activity_IAMUser.md](../Playbooks/IAMActions/TImpact_last_activity_IAMUser.md)
+  
+**Topics** - IAM, Last Activity of IAMUsers, AWS IAM Service
+
+This playbook describes how to execute Tamnoon IAMHelper automation to describe last activity of IAMUser.  
+### iam-user - 	ls
+[TImpact_list_IAMUser.md](../Playbooks/IAMActions/TImpact_list_IAMUser.md)
+  
+**Topics** - IAM, List IAMUsers, AWS IAM Service
+
+This playbook describes how to execute Tamnoon IAMHelper automation to list IAM Users available in AWS account.  
+### iam-user - 	remove_console_access
+[TPlaybook_IAMUser_remove_console_access.md](../Playbooks/IAMActions/TPlaybook_IAMUser_remove_console_access.md)
+  
+**Topics** - IAM Users, IAMUser Remove Console Access, AWS IAM Service
+
+This playbook describes how to execute Tamnoon IAMHelper automation to remove IAM User console access.  
+### rds - 	deletion_protection
+[TPlaybook_rds_deletion_protection.md](../Playbooks/RDSActions/TPlaybook_rds_deletion_protection.md)
+  
+**Topics** - RDS(Relational Database Service), RDS Deletion Protection Configuration, AWS RDS Service
+
+This playbook describes how to execute Tamnoon RDSHelper automation to enable database instance deletion protection configration.  
+### s3 - 	block_http
+[TPlayBook_S3_deny_http_access.md](../Playbooks/S3Actions/TPlayBook_S3_deny_http_access.md)
+  
+**Topics** - S3, Block HTTP, HTTP Access to S3 Bucket
+
+This playbook describes how to execute Tamnoon S3 soft configuration automation to add deny policy for HTTP access.
+  
+### s3 - 	check_public_access
+[TImpact_S3_check_public_access.md](../Playbooks/S3Actions/TImpact_S3_check_public_access.md)
+  
+**Topics** - S3, Public Access, Access Configuration
+
+This playbook describes how to execute Tamnoon S3 automation to find which s3 buckets have public access.
+  
+This automation investigates policies and ACLs of S3 buckets that can allow public access to the buckets.  
+
+- Buckets are considered public if they have some policy that allows action `s3:ListBucket` or `s3:*` to Principal `*` and having resource as the bucketName. For more details on policies, follow this [link](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html).  Similarly, if buckets have similar policy but only with effect `Deny`, then irrespective of other policies, it will be denied access by public.
+
+- It is possible for buckets to be public if they have some ACLs that allows for `READ` or `FULL_CONTROL` permission given to Everyone (`https://acs.amazonaws.com/groups/global/AllUsers`). For more details on ACLs, follow this [link](https://docs.aws.amazon.com/AmazonS3/latest/userguide/acls.html).
+
+- Buckets that are public can be blocked for public access by Bucket Level Block Public Access and Account Level Block Public Access.
+
+	- Block Public Access (BPA) is made of four values, out of which, two values are used for blocking public access of s3 buckets:
+
+		- IgnorePublicAcls - ignores all the ACLs that are defined on the bucket and blocks the public access to the bucket, if it has been allowed via ACLs.
+
+		- RestrictPublicBuckets - ignores all policies that are defined on the bucket and blocks the public access to the bucket, if it has been allowed via policies. It additionally reduces the previous public access - that is if any account could access this bucket previously, it will now allow to the accounts only from same organization as that of bucket owner.
+	Bucket level BPA will take precedence for Account level first, then Bucket level.  
+
+- For more details of BlockPublicAccess follow this [link](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html).
+### s3 - 	configure_public_access
+[TPlayBook_S3_block_public_access.md](../Playbooks/S3Actions/TPlayBook_S3_block_public_access.md)
+  
+**Topics** - S3, Block Public Access, Block Public Access Configuration
+
+This playbook describes how to execute Tamnoon S3 soft configuration automation to block public access.
+  
+### s3 - 	encryption
+[TPlayBook_S3_enable_encryption.md](../Playbooks/S3Actions/TPlayBook_S3_enable_encryption.md)
+  
+**Topics** - S3, Encryption, S3 Bucket Encryption
+
+This playbook describes how to execute Tamnoon S3 soft configuration automation to enable bucket encryption.
+  
+### s3 - 	mfa_protection
+[TPlayBook_S3_enable_mfa_protection.md](../Playbooks/S3Actions/TPlayBook_S3_enable_mfa_protection.md)
+  
+**Topics** - S3, MFA, MFA Protection
+
+This playbook describes how to execute Tamnoon S3 soft configuration automation to enable bucket mfa delete protection.
+  
+### s3 - 	server_logging
+[TPlayBook_S3_enable_server_logging.md](../Playbooks/S3Actions/TPlayBook_S3_enable_server_logging.md)
+  
+**Topics** - S3, Server Logging, S3 Server Logging
+
+This playbook describes how to execute Tamnoon S3 soft configuration automation to enable server logging.
+  
+### s3 - 	versioning
+[TPlayBook_S3_enable_versioning.md](../Playbooks/S3Actions/TPlayBook_S3_enable_versioning.md)
+  
+**Topics** - S3, Server Versioning, S3 Server Versioning
+
+This playbook describes how to execute Tamnoon S3 soft configuration automation to enable bucket versioning.
+  
 ### security-group - 	clean_unused_sg
 [TPlaybook_security_group_clean_unused.md](../Playbooks/EC2Actions/TPlaybook_security_group_clean_unused.md)
   
@@ -59,7 +200,7 @@ The automation attempts to collect information about inbound traffic to the memb
 
 8. querying in Cloudwatch that log group and summarizing the infromation by source IP and destination port.
 
-For each Security Group for which this process succeeded, it outputs a json file with that information. At the end of its run, it also writes an output file for the run itself that for each security group says if information was retrieved and to which file it was saved. The success of this automation depends on the existence of flowlogs that log traffic for the security group members, and their availability within log groups in Cloudwatch. Follow [Tamnoon Playbook: Ec2 - Create VPC FLowlog](./TPlaybbok_create_vpc_flowlog.md) to enable creation of flow logs.  
+For each Security Group for which this process succeeded, it outputs a json file with that information. At the end of its run, it also writes an output file for the run itself that for each security group says if information was retrieved and to which file it was saved. The success of this automation depends on the existence of flowlogs that log traffic for the security group members, and their availability within log groups in Cloudwatch. Follow [Tamnoon Playbook: Ec2 - Create VPC FLowlog](./TPlaybook_vpc_create_flow_log.md) to enable creation of flow logs.  
 ### security-group - 	get_usage
 [TImpact_security_group_get_usage.md](../Playbooks/EC2Actions/TImpact_security_group_get_usage.md)
   

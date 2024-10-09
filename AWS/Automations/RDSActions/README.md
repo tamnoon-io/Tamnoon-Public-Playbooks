@@ -1,5 +1,5 @@
 
-<img src="../images/icons/Tamnoon.png" width="200"/>
+<img src="../../../images/icons/Tamnoon.png" width="200"/>
 
 # Tamnoon Playbook: automatically execute bulk operation for RDS Service.
 

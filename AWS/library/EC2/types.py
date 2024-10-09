@@ -14,6 +14,14 @@ class EC2Types(Enum):
     VPC = "vpc"
     EC2 = "ec2"
     SUBNET = "subnet"
+    ALB = 'alb'
+
+
+class ApplicationLoadBalancerTypeActions(Enum):
+    """
+    ApplicationLoadBalancerTypeActions
+    """
+    REDIRECT_TO_HTTPS = "redirect_to_https"
 
 
 class SnapshotTypeActions(Enum):

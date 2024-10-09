@@ -68,19 +68,19 @@ After authentication via AWS API, the script execution will run on the same AWS 
 
 			 Executions Examples:
 				 python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action <The S3 action to execute> --bucketNames <The S3 bucket name>
-				 --actionParmas <key value dictionary with the action execution params> --revert <true/false if to revert this action>
+				 --actionParams <key value dictionary with the action execution params> --revert <true/false if to revert this action>
 
 				 python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action server_logging  --bucketNames <The S3 bucket name>
-				 --actionParmas {"target_bucket":<the target buckt to contain the logs>} --revert <true/false if to revert this action>
+				 --actionParams {"target_bucket":<the target buckt to contain the logs>} --revert <true/false if to revert this action>
 
 				 python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action encryption  --bucketNames <The S3 bucket name> 
-				 --actionParmas {"kms":<the target buckt to contain the logs>} --revert <true/false if to revert this action>
+				 --actionParams {"kms":<the target buckt to contain the logs>} --revert <true/false if to revert this action>
 
 				 python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action versioning  --bucketNames <The S3 bucket name>
 				 --revert <true/false if to revert this action>
 
 				 python3 S3_Soft_Configuration_Handler.py --profile <aws_profile> --action mfa_protection  --bucketNames <The S3 bucket name>
-				 --actionParmas {"mfa":<The concatenation of the authentication devices serial number, a space, and the value that is displayed on your authentication device>}  --revert <true/false if to revert this action>
+				 --actionParams {"mfa":<The concatenation of the authentication devices serial number, a space, and the value that is displayed on your authentication device>}  --revert <true/false if to revert this action>
 
 
 
@@ -91,5 +91,5 @@ After authentication via AWS API, the script execution will run on the same AWS 
 					 * for mfa_protection you have to execute the script as the root user of the account according to: 
 					 https://docs.aws.amazon.com/AmazonS3/latest/userguide/MultiFactorAuthenticationDelete.html
 				 bucketNames - List of The bucket names for example b1,b2,b3
-				 actionParmas  - A key value Dictionary of action params"
+				 actionParams  - A key value Dictionary of action params"
 				 revert  - A true false flag to a sign if this action need to revert"
